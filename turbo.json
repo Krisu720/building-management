@@ -48,6 +48,14 @@
     },
     "env:generate": {
       "cache": false
+    },
+    "openapi:generate": {
+      "dependsOn": [
+        "build"
+      ],
+      "outputs": [
+        "openapi.json"
+      ]
     }
   },
   "globalEnv": [

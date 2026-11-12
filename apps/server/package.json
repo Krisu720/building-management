@@ -8,6 +8,7 @@
     "dev": "nest start --watch --preserveWatchOutput",
     "start": "node dist/main.js",
     "start:debug": "nest start --debug --watch",
+    "openapi:generate": "node dist/openapi/generate.js",
     "check-types": "tsc --noEmit",
     "lint": "oxlint --type-aware src/ test/",
     "test": "vitest run",
@@ -17,15 +18,18 @@
     "postinstall": "varlock codegen"
   },
   "dependencies": {
+    "@building-management/contracts": "workspace:*",
     "@building-management/db": "workspace:*",
     "@nestjs/common": "^12.4.2",
     "@nestjs/core": "^12.4.2",
     "@nestjs/drizzle": "^0.0.2",
     "@nestjs/platform-express": "^12.4.2",
+    "@nestjs/swagger": "^12.1.1",
     "drizzle-orm": "^0.45.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "varlock": "1.23.0"
+    "varlock": "1.23.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@building-management/config": "workspace:*",
