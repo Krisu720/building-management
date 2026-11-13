@@ -9,7 +9,7 @@ import { createOpenApiDocument } from './document.js';
 
 const outFile = resolve(import.meta.dirname, '../../openapi.json');
 
-const app = configureApp(await NestFactory.create(AppModule, { logger: ['error'] }));
+const app = configureApp(await NestFactory.create(AppModule, { bodyParser: false, logger: ['error'] }));
 const document = createOpenApiDocument(app);
 await writeFile(outFile, `${JSON.stringify(document, null, 2)}\n`);
 await app.close();

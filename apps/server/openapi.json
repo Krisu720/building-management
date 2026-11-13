@@ -32,8 +32,19 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Brak sesji"
+          },
+          "403": {
+            "description": "Brak uprawnień"
           }
         },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
         "tags": [
           "buildings"
         ]
@@ -71,8 +82,19 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Brak sesji"
+          },
+          "403": {
+            "description": "Brak uprawnień"
           }
         },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
         "tags": [
           "buildings"
         ]
@@ -114,6 +136,12 @@
               }
             }
           },
+          "401": {
+            "description": "Brak sesji"
+          },
+          "403": {
+            "description": "Brak uprawnień"
+          },
           "404": {
             "description": "Budynek nie istnieje",
             "content": {
@@ -125,6 +153,11 @@
             }
           }
         },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
         "tags": [
           "buildings"
         ]
@@ -174,6 +207,12 @@
               }
             }
           },
+          "401": {
+            "description": "Brak sesji"
+          },
+          "403": {
+            "description": "Brak uprawnień"
+          },
           "404": {
             "description": "Budynek nie istnieje",
             "content": {
@@ -185,6 +224,11 @@
             }
           }
         },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
         "tags": [
           "buildings"
         ]
@@ -217,6 +261,12 @@
               }
             }
           },
+          "401": {
+            "description": "Brak sesji"
+          },
+          "403": {
+            "description": "Brak uprawnień"
+          },
           "404": {
             "description": "Budynek nie istnieje",
             "content": {
@@ -228,6 +278,11 @@
             }
           }
         },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
         "tags": [
           "buildings"
         ]
@@ -243,6 +298,13 @@
   "tags": [],
   "servers": [],
   "components": {
+    "securitySchemes": {
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "better-auth.session_token"
+      }
+    },
     "schemas": {
       "Building": {
         "type": "object",

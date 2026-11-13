@@ -7,6 +7,7 @@ export function createOpenApiDocument(app: INestApplication) {
   const config = new DocumentBuilder()
     .setTitle('Building Management API')
     .setVersion('0.0.1')
+    .addCookieAuth('better-auth.session_token')
     .build();
 
   return SwaggerModule.createDocument(app, config, {

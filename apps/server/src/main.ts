@@ -7,7 +7,7 @@ import { ENV } from './env.js';
 import { setupSwagger } from './openapi/document.js';
 
 async function bootstrap() {
-  const app = configureApp(await NestFactory.create(AppModule));
+  const app = configureApp(await NestFactory.create(AppModule, { bodyParser: false }));
   app.enableShutdownHooks();
   setupSwagger(app);
   await app.listen(ENV.PORT);
