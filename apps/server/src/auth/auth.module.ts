@@ -10,7 +10,7 @@ import { createAuth } from './auth.js';
       inject: [getDrizzleToken()],
       useFactory: (db: Database) => ({
         auth: createAuth(db),
-        // Biblioteka włącza CORS bez PATCH; w dev frontend idzie przez proxy Vite (same-origin).
+        // Biblioteka włącza CORS bez PATCH; w dev frontend idzie przez proxy Next.js (same-origin).
         disableTrustedOriginsCors: true,
       }),
     }),

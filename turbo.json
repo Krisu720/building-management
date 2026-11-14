@@ -11,7 +11,7 @@
         ".env*"
       ],
       "outputs": [
-        "dist/**"
+        "dist/**", ".next/**", "!.next/cache/**"
       ]
     },
     "lint": {
@@ -60,7 +60,7 @@
   },
   "globalEnv": [
     "CI",
-    "NODE_ENV",
+    "NODE_ENV", "API_URL",
     "VERCEL",
     "VERCEL_ENV",
     "VERCEL_PROJECT_PRODUCTION_URL",

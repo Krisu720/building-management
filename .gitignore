@@ -57,3 +57,8 @@ coverage
 .cache
 tmp
 temp
+
+# Next.js
+.next/
+out/
+apps/web/next-env.d.ts
