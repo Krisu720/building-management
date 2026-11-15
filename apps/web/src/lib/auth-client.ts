@@ -1,7 +1,10 @@
 "use client";
 
 import { createAuthClient } from "better-auth/react";
+import { adminClient } from "better-auth/client/plugins";
 
-// Same-origin requests are forwarded to NestJS by next.config.ts.
-export const authClient = createAuthClient({});
 
+// Both authentication and application API requests use the Next.js proxy.
+export const authClient = createAuthClient({
+  plugins: [adminClient()],
+});
