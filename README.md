@@ -1,76 +1,95 @@
-# building-management
+# Building Management  
 
-Monorepo (pnpm + Turborepo) z backendem NestJS i bazą PostgreSQL obsługiwaną przez Drizzle ORM.
+# Opis projektu  
 
-## Stack
+Aplikacja webowa wspomagająca zgłaszanie usterek oraz zarządzanie przeglądami technicznymi mieszkań i budynków mieszkalnych. Ułatwia komunikację między mieszkańcami, administracją i pracownikami technicznymi, umożliwiając obsługę zgłoszeń, śledzenie ich statusów, planowanie przeglądów. 
+ 
+Projekt realizowany w ramach przedmiotu **Projekt Systemu Aplikacji Multimedialnej 2026/2027**. 
 
-- **TypeScript** (ESM w całym repo)
-- **Turborepo** – orkiestracja zadań w monorepo
-- **NestJS 12** – backend (`apps/server`)
-- **Drizzle ORM + drizzle-kit** – schemat, zapytania i migracje (`packages/db`)
-- **PostgreSQL 18** – lokalnie przez Docker Compose
-- **Varlock** – walidowane i typowane zmienne środowiskowe
+ # Technologie 
 
-## Struktura
+Frontend: Next.js, React, TypeScript, Tailwind CSS, shadcn/ui.  
 
+Formularze: React Hook Form, Zod v4. 
+
+API: TanStack Query, Orval.
+
+Backend: NestJS, Better Auth, Swagger/OpenAPI.  
+
+Baza danych: PostgreSQL, Drizzle ORM.  
+
+Narzędzia: pnpm, Turborepo, Docker Compose, Varlock.
+
+Testy: Playwright.
+
+# Wymagania 
+
+Git. 
+
+Node.js 22.23.3. 
+
+pnpm 12.18.0.  
+
+Docker z Docker Compose.  
+
+# Instalacja 
 ```
-building-management/
-├── apps/
-│   └── server/            # NestJS API (moduły: database, health, buildings)
-├── packages/
-│   ├── config/            # wspólny tsconfig
-│   └── db/                # schemat Drizzle, createDb(), migracje, drizzle.config.ts
-├── docker-compose.yml     # Postgres
-└── .env.schema            # wspólne zmienne (DATABASE_URL)
+git clone https://github.com/Krisu720/building-management.git 
+```
+```
+cd building-management 
+```
+```
+pnpm install  
 ```
 
-`apps/server` łączy się z bazą przez `@nestjs/drizzle` — instancję tworzy `createDb()` z `@building-management/db`, a w serwisach wstrzykuje się ją dekoratorem `@InjectDrizzle()` (typ `Database`).
+Konfigurację opisują pliki .env.schema. Lokalne wartości można nadpisać w plikach .env lub .env.local.
 
-## Start
+## Konfiguracja środowiska
+
+Zmienne środowiskowe są opisane w plikach `.env.schema` i walidowane przez Varlock. Własne wartości można ustawić w plikach `.env` lub `.env.local`, które nie są dodawane do repozytorium.
+
+Najważniejsze zmienne:
+
+- `DATABASE_URL` — adres połączenia z bazą PostgreSQL.
+- `PORT` — port backendu, domyślnie `3000`.
+- `BETTER_AUTH_URL` — adres backendu, domyślnie `http://localhost:3000`.
+- `BETTER_AUTH_SECRET` — sekret używany do uwierzytelniania.
+- `WEB_URL` — adres frontendu, domyślnie `http://localhost:3001`.
+- `API_URL` — adres backendu używany przez frontend, domyślnie `http://localhost:3000`.
+
+Konfiguracja bazy znajduje się w głównym `.env.schema`, a konfiguracja backendu w `apps/server/.env.schema`. Po zmianie schematów odśwież typy zmiennych:
 
 ```bash
-pnpm install        # instaluje zależności i generuje apps/server/src/env.ts
-pnpm db:start       # uruchamia Postgresa w Dockerze
-pnpm db:migrate     # wykonuje migracje
-pnpm dev            # buduje packages/db i odpala API w trybie watch na :3000
+pnpm env:generate
 ```
 
-Sprawdzenie: `curl localhost:3000/health`.
+# Uruchomienie  
 
-## Baza danych
-
-Schemat tabel jest w `packages/db/src/schema/`. Po zmianie schematu:
-
-```bash
-pnpm db:generate    # generuje migrację SQL do packages/db/migrations
-pnpm db:migrate     # wykonuje ją na bazie
+Uruchom Docker, a następnie wykonaj:  
 ```
-
-Inne: `pnpm db:push` (synchronizacja schematu bez migracji, do szybkich prototypów), `pnpm db:studio` (Drizzle Studio), `pnpm db:stop`.
-
-## Zmienne środowiskowe
-
-Schematy zmiennych są w plikach `.env.schema` (commitowane). Główny `.env.schema` definiuje konfigurację Postgresa (`COMPOSE_PROJECT_NAME`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, ...) i składa z niej `DATABASE_URL`; importują go `apps/server` i `packages/db`. Lokalne nadpisania wpisuj do `.env` lub `.env.local` w roocie (oba ignorowane przez git). `pnpm db:start`/`db:stop` uruchamiają docker compose przez `varlock run`, więc kontener i aplikacja zawsze widzą te same wartości.
-
-### Kilka instancji bazy
-
-Żeby postawić kolejną, niezależną bazę (np. w drugiej kopii repo / worktree), ustaw w jej `.env` inną nazwę projektu i port:
-
-```env
-COMPOSE_PROJECT_NAME=building-management-2
-POSTGRES_PORT=5433
+pnpm db:start 
 ```
+```
+pnpm db:migrate
+```
+```
+pnpm dev  
+```
+Aplikacja: http://localhost:3001  
 
-Każdy projekt dostaje własny kontener i wolumen, a `DATABASE_URL` sam wskaże na nowy port.
+Dokumentacja API: http://localhost:3000/api/docs  
 
-Varlock generuje `apps/server/src/env.ts` przy instalacji; po zmianie schematu uruchom `pnpm env:generate`. W kodzie używaj `ENV` z `./env.js` zamiast `process.env`.
+Do wysłania zgłoszenia potrzebny jest budynek zapisany w bazie oraz, w przypadku usterki w mieszkaniu, przypisany do niego lokal. 
 
-## Skrypty
+# Autorzy  
 
-- `pnpm dev` – tryb developerski wszystkich aplikacji
-- `pnpm build` – build wszystkiego
-- `pnpm check-types` – sprawdzenie typów
-- `pnpm lint` – oxlint
-- `pnpm test` – testy jednostkowe (Vitest)
-- `pnpm --filter server test:e2e` – testy e2e API (wymagają działającej bazy)
-- `pnpm db:*` – patrz sekcja „Baza danych”
+Oskar Brandt (awakexq) 
+
+Krzysztof Wilk (Krisu720) 
+
+Mateusz Szewczyk (UnluckyShadow) 
+
+Jakub Ścigaj (scigusk0x) 
+
+Grupa PAW 1 
