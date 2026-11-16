@@ -1,8 +1,8 @@
-import { apartments, buildings, issueHistory, issues, type Database } from '@building-management/db';
+import { apartments, buildings, issueHistory, issues, user, type Database } from '@building-management/db';
 import type { CreateIssue } from '@building-management/contracts';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectDrizzle } from '@nestjs/drizzle';
-import { eq } from 'drizzle-orm';
+import { desc, eq, getTableColumns } from 'drizzle-orm';
 
 @Injectable()
 export class IssuesService {
@@ -28,6 +28,36 @@ export class IssuesService {
         .values({ issueId: issue!.id, status: issue!.status, changedBy: reporterId });
       return issue!;
     });
+  }
+
+  findAll() {
+    return this.list();
+  }
+
+  findByReporter(reporterId: string) {
+    return this.list(reporterId);
+  }
+
+  private async list(reporterId?: string) {
+    const rows = await this.db
+      .select({
+        ...getTableColumns(issues),
+        building: { id: buildings.id, name: buildings.name, address: buildings.address },
+        apartmentRef: { id: apartments.id, number: apartments.number },
+        reporterRef: { id: user.id, name: user.name, email: user.email },
+      })
+      .from(issues)
+      .innerJoin(buildings, eq(buildings.id, issues.buildingId))
+      .leftJoin(apartments, eq(apartments.id, issues.apartmentId))
+      .leftJoin(user, eq(user.id, issues.reporterId))
+      .where(reporterId ? eq(issues.reporterId, reporterId) : undefined)
+      .orderBy(desc(issues.createdAt));
+
+    return rows.map(({ apartmentRef, reporterRef, ...issue }) => ({
+      ...issue,
+      apartment: apartmentRef?.id ? apartmentRef : null,
+      reporter: reporterRef?.id ? reporterRef : null,
+    }));
   }
 
   private async assertLocation(buildingId: string, apartmentId: string | null) {

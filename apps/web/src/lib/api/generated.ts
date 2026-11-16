@@ -29,7 +29,8 @@ import type {
   Building,
   CreateIssue,
   ErrorResponse,
-  Issue
+  Issue,
+  IssueListItem
 } from './models';
 
 import { apiFetch } from './fetch';
@@ -268,6 +269,100 @@ export function useApartmentsFindAll<TData = Awaited<ReturnType<typeof apartment
 
 
 
+export const getIssuesFindAllUrl = () => {
+
+
+
+
+  return `/api/issues`
+}
+
+export const issuesFindAll = async ( options?: Parameters<typeof apiFetch>[1]): Promise<IssueListItem[]> => {
+
+  return apiFetch<IssueListItem[]>(getIssuesFindAllUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getIssuesFindAllQueryKey = () => {
+    return [
+    `/api/issues`
+    ] as const;
+    }
+
+
+export const getIssuesFindAllQueryOptions = <TData = Awaited<ReturnType<typeof issuesFindAll>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getIssuesFindAllQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof issuesFindAll>>> = ({ signal }) => issuesFindAll({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type IssuesFindAllQueryResult = NonNullable<Awaited<ReturnType<typeof issuesFindAll>>>
+export type IssuesFindAllQueryError = ErrorType<void>
+
+
+export function useIssuesFindAll<TData = Awaited<ReturnType<typeof issuesFindAll>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof issuesFindAll>>,
+          TError,
+          Awaited<ReturnType<typeof issuesFindAll>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useIssuesFindAll<TData = Awaited<ReturnType<typeof issuesFindAll>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof issuesFindAll>>,
+          TError,
+          Awaited<ReturnType<typeof issuesFindAll>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useIssuesFindAll<TData = Awaited<ReturnType<typeof issuesFindAll>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useIssuesFindAll<TData = Awaited<ReturnType<typeof issuesFindAll>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getIssuesFindAllQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getIssuesCreateUrl = () => {
 
 
@@ -335,3 +430,91 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getIssuesCreateMutationOptions(options), queryClient);
     }
+
+export const getIssuesFindMineUrl = () => {
+
+
+
+
+  return `/api/issues/mine`
+}
+
+export const issuesFindMine = async ( options?: Parameters<typeof apiFetch>[1]): Promise<IssueListItem[]> => {
+
+  return apiFetch<IssueListItem[]>(getIssuesFindMineUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getIssuesFindMineQueryKey = () => {
+    return [
+    `/api/issues/mine`
+    ] as const;
+    }
+
+
+export const getIssuesFindMineQueryOptions = <TData = Awaited<ReturnType<typeof issuesFindMine>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindMine>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getIssuesFindMineQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof issuesFindMine>>> = ({ signal }) => issuesFindMine({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof issuesFindMine>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type IssuesFindMineQueryResult = NonNullable<Awaited<ReturnType<typeof issuesFindMine>>>
+export type IssuesFindMineQueryError = ErrorType<void>
+
+
+export function useIssuesFindMine<TData = Awaited<ReturnType<typeof issuesFindMine>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindMine>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof issuesFindMine>>,
+          TError,
+          Awaited<ReturnType<typeof issuesFindMine>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useIssuesFindMine<TData = Awaited<ReturnType<typeof issuesFindMine>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindMine>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof issuesFindMine>>,
+          TError,
+          Awaited<ReturnType<typeof issuesFindMine>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useIssuesFindMine<TData = Awaited<ReturnType<typeof issuesFindMine>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindMine>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useIssuesFindMine<TData = Awaited<ReturnType<typeof issuesFindMine>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindMine>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getIssuesFindMineQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}

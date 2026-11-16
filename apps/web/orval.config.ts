@@ -9,6 +9,8 @@ export default defineConfig({
           'Buildings_findAll',
           'Apartments_findAll',
           'Issues_create',
+          'Issues_findAll',
+          'Issues_findMine',
         ],
       },
     },

@@ -22,5 +22,12 @@ export const CreateIssueSchema = z
   })
   .meta({ id: 'CreateIssue' });
 
+export const IssueListItemSchema = IssueSchema.extend({
+  building: z.object({ id: z.uuid(), name: z.string(), address: z.string() }),
+  apartment: z.object({ id: z.uuid(), number: z.string() }).nullable(),
+  reporter: z.object({ id: z.string(), name: z.string(), email: z.string() }).nullable(),
+}).meta({ id: 'IssueListItem' });
+
 export type Issue = z.infer<typeof IssueSchema>;
 export type CreateIssue = z.infer<typeof CreateIssueSchema>;
+export type IssueListItem = z.infer<typeof IssueListItemSchema>;
