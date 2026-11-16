@@ -47,6 +47,7 @@ const accountNavigation = [
   { href: '/buildings', label: 'Budynki', icon: Building2 },
   { href: '/residents', label: 'Mieszkańcy', icon: UsersRound },
   { href: '/requests', label: 'Zgłoszenia', icon: ClipboardList },
+  { href: '/my-requests', label: 'Moje zgłoszenia', icon: ClipboardList },
   { href: '/inspections', label: 'Przeglądy techniczne', icon: Wrench },
 ];
 
@@ -117,10 +118,16 @@ export function AccountShell({ children }: { children: ReactNode }) {
     );
   }
 
-  const panelTitle = isAdmin(session.user.role)
+  const administrator = isAdmin(session.user.role);
+  const panelTitle = administrator
     ? 'Panel administracyjny'
     : 'Panel użytkownika';
   const initials = getInitials(session.user.name);
+  const navigation = accountNavigation.filter(({ href }) =>
+    administrator
+      ? href !== '/my-requests'
+      : !['/buildings', '/residents'].includes(href),
+  );
 
   return (
     <AccountContext.Provider
@@ -166,16 +173,16 @@ export function AccountShell({ children }: { children: ReactNode }) {
             className="flex items-center gap-[10px] p-[0_8px] mb-[42px] text-[17px] font-[600] leading-[1.25] tracking-[-0.45px] focus-visible:[outline:2px_solid_#6ea8ff] focus-visible:outline-offset-[3px]"
             onClick={closeMenu}
           >
-            <span className="[&:last-child]:min-w-0 grid place-items-center w-[28px] h-[34px] shrink-0 text-[#0866f5]">
+            <span className="grid place-items-center w-[28px] h-[34px] shrink-0 text-[#0866f5]">
               <House size={27} strokeWidth={1.7} />
             </span>
-            <span className="[&:last-child]:min-w-0">{panelTitle}</span>
+            <span className="min-w-0">{panelTitle}</span>
           </Link>
           <div className="p-[0_14px] mb-[12px] text-[10px] font-[550] text-[#9aa5b5] tracking-[1.5px]">
             ZARZĄDZANIE
           </div>
           <nav className="flex flex-col gap-[5px]" aria-label="Menu główne">
-            {accountNavigation.map(({ href, label, icon: Icon }) => (
+            {navigation.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
@@ -184,7 +191,11 @@ export function AccountShell({ children }: { children: ReactNode }) {
                 onClick={closeMenu}
               >
                 <Icon className="shrink-0" size={18} strokeWidth={1.7} />
-                <span>{label}</span>
+                <span>
+                  {href === '/requests' && !administrator
+                    ? 'Zgłoś usterkę'
+                    : label}
+                </span>
               </Link>
             ))}
           </nav>

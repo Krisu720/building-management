@@ -1,18 +1,19 @@
-import { notFound } from "next/navigation";
+import { notFound } from 'next/navigation';
 
-const sections = ["residents", "requests", "inspections"];
+const sections = ['residents', 'inspections'];
 
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return sections.map(section => ({ section }));
+  return sections.map((section) => ({ section }));
 }
 
-export default async function SectionPage({ params }: { params: Promise<{ section: string }> }) {
+export default async function SectionPage({
+  params,
+}: {
+  params: Promise<{ section: string }>;
+}) {
   const { section } = await params;
   if (!sections.includes(section)) notFound();
   return null;
 }
-
-
-

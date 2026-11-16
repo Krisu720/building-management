@@ -1,5 +1,6 @@
 'use client';
 
+import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { useId, useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
 import { getInitials, isAdmin } from '@/lib/user-display';
@@ -17,6 +18,14 @@ import { FieldError } from '@/components/ui/field-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth-client';
+import {
+  profileFormSchema,
+  passwordFormSchema,
+  type ProfileFormInput,
+  type ProfileFormValues,
+  type PasswordFormInput,
+  type PasswordFormValues,
+} from '@/lib/form-schemas';
 import { useAccount } from './account-shell';
 
 const fieldRowClassName =
@@ -93,11 +102,12 @@ function ProfileForm() {
     setError,
     reset,
     formState: { errors, isSubmitting, isDirty },
-  } = useForm<{ name: string }>({
+  } = useForm<ProfileFormInput, unknown, ProfileFormValues>({
+    resolver: standardSchemaResolver(profileFormSchema),
     defaultValues: { name: user.name },
   });
 
-  async function save(values: { name: string }) {
+  async function save(values: ProfileFormValues) {
     setSaved(false);
     try {
       const result = await authClient.updateUser({ name: values.name });
@@ -180,11 +190,7 @@ function ProfileForm() {
               aria-required="true"
               aria-invalid={!!errors.name}
               aria-describedby={errors.name ? id + '-name-error' : undefined}
-              {...register('name', {
-                required: 'Wpisz imię i nazwisko.',
-                maxLength: { value: 100, message: 'Maksymalnie 100 znaków.' },
-                setValueAs: (value: string) => value.trim(),
-              })}
+              {...register('name')}
             />
             <FieldError
               id={id + '-name-error'}
@@ -235,12 +241,6 @@ function ProfileForm() {
   );
 }
 
-type PasswordValues = {
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
-};
-
 function PasswordForm() {
   const { refresh } = useAccount();
   const [saved, setSaved] = useState(false);
@@ -250,7 +250,8 @@ function PasswordForm() {
     setError,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<PasswordValues>({
+  } = useForm<PasswordFormInput, unknown, PasswordFormValues>({
+    resolver: standardSchemaResolver(passwordFormSchema),
     defaultValues: {
       currentPassword: '',
       newPassword: '',
@@ -258,7 +259,7 @@ function PasswordForm() {
     },
   });
 
-  async function save(values: PasswordValues) {
+  async function save(values: PasswordFormValues) {
     setSaved(false);
     try {
       const result = await authClient.changePassword({
@@ -284,7 +285,7 @@ function PasswordForm() {
         }
         return;
       }
-      reset({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      reset();
       setSaved(true);
       refresh();
     } catch {
@@ -328,34 +329,19 @@ function PasswordForm() {
           label="Obecne hasło"
           autoComplete="current-password"
           error={errors.currentPassword?.message}
-          registration={register('currentPassword', {
-            required: 'Wpisz obecne hasło.',
-            maxLength: { value: 128, message: 'Maksymalnie 128 znaków.' },
-          })}
+          registration={register('currentPassword')}
         />
         <PasswordField
           label="Nowe hasło"
           autoComplete="new-password"
           error={errors.newPassword?.message}
-          registration={register('newPassword', {
-            required: 'Wpisz nowe hasło.',
-            minLength: { value: 8, message: 'Co najmniej 8 znaków.' },
-            maxLength: { value: 128, message: 'Maksymalnie 128 znaków.' },
-            validate: (value, values) =>
-              value !== values.currentPassword ||
-              'Nowe hasło musi różnić się od obecnego.',
-            deps: ['confirmPassword'],
-          })}
+          registration={register('newPassword', { deps: ['confirmPassword'] })}
         />
         <PasswordField
           label="Powtórz nowe hasło"
           autoComplete="new-password"
           error={errors.confirmPassword?.message}
-          registration={register('confirmPassword', {
-            required: 'Powtórz nowe hasło.',
-            validate: (value, values) =>
-              value === values.newPassword || 'Hasła muszą być takie same.',
-          })}
+          registration={register('confirmPassword')}
         />
       </fieldset>
       {errors.root?.server?.message && (
