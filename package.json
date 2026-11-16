@@ -19,7 +19,9 @@
     "db:generate": "pnpm --filter @building-management/db db:generate",
     "db:migrate": "pnpm --filter @building-management/db db:migrate",
     "db:push": "pnpm --filter @building-management/db db:push",
-    "db:studio": "pnpm --filter @building-management/db db:studio"
+    "db:studio": "pnpm --filter @building-management/db db:studio",
+    "test:e2e": "pnpm --filter web test:e2e",
+    "test:e2e:run": "pnpm --filter web test:e2e:run"
   },
   "devDependencies": {
     "@building-management/config": "workspace:*",
