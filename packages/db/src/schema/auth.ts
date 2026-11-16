@@ -1,4 +1,5 @@
-import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { type AnyPgColumn, boolean, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { apartments } from './apartments.js';
 
 const timestamps = {
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
@@ -19,8 +20,10 @@ export const user = pgTable('user', {
   banned: boolean().notNull().default(false),
   banReason: text(),
   banExpires: timestamp({ withTimezone: true }),
+  // lokal, w którym mieszka użytkownik (tylko mieszkańcy).
+  apartmentId: uuid().references((): AnyPgColumn => apartments.id, { onDelete: 'set null' }),
   ...timestamps,
-});
+}, (t) => [index().on(t.apartmentId)]);
 
 export const session = pgTable(
   'session',
