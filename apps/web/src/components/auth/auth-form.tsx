@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import { useId, useRef, useState } from 'react';
@@ -18,6 +19,11 @@ import { FieldError } from '@/components/ui/field-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth-client';
+import {
+  createAuthFormSchema,
+  type AuthFormInput,
+  type AuthFormValues,
+} from '@/lib/form-schemas';
 
 const inputClassName =
   "h-[52px]! p-[0_16px_0_44px]! text-[15px]! rounded-[6px]! border-[#e2e8f0]! bg-white! shadow-[0_1px_2px_#132e4c03]! [transition:border-color_140ms_ease,_box-shadow_140ms_ease]! placeholder:text-[#9aa5b4]! focus-visible:border-[#6ea8ff]! focus-visible:shadow-[0_0_0_3px_#0866f512]! focus-visible:outline-none! max-[760px]:text-[16px]! max-[760px]:h-[48px]! aria-invalid:border-[#d56a61]! [&[aria-invalid='true']:focus-visible]:shadow-[0_0_0_3px_#d56a611a]!";
@@ -42,13 +48,6 @@ function errorMessage(code?: string) {
   }
 }
 
-type AuthFormValues = {
-  name: string;
-  email: string;
-  password: string;
-  remember: boolean;
-};
-
 export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
   const registering = mode === 'register';
   const router = useRouter();
@@ -60,11 +59,10 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
     handleSubmit,
     setError,
     formState: { errors, isSubmitting: pending },
-  } = useForm<AuthFormValues>({
+  } = useForm<AuthFormInput, unknown, AuthFormValues>({
+    resolver: standardSchemaResolver(createAuthFormSchema(mode)),
     defaultValues: { name: '', email: '', password: '', remember: true },
     shouldUnregister: true,
-    mode: 'onSubmit',
-    reValidateMode: 'onChange',
   });
 
   function showServerError(message: string) {
@@ -147,15 +145,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
                 aria-required="true"
                 aria-invalid={!!errors.name}
                 aria-describedby={errors.name ? id + '-name-error' : undefined}
-                {...register('name', {
-                  required: 'Wpisz imię i nazwisko.',
-                  maxLength: {
-                    value: 100,
-                    message:
-                      'Imię i nazwisko może mieć maksymalnie 100 znaków.',
-                  },
-                  setValueAs: (value: string) => value.trim(),
-                })}
+                {...register('name')}
               />
             </div>
             <FieldError
@@ -189,14 +179,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
               aria-required="true"
               aria-invalid={!!errors.email}
               aria-describedby={errors.email ? id + '-email-error' : undefined}
-              {...register('email', {
-                required: 'Wpisz adres e-mail.',
-                pattern: {
-                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                  message: 'Wpisz poprawny adres e-mail.',
-                },
-                setValueAs: (value: string) => value.trim(),
-              })}
+              {...register('email')}
             />
           </div>
           <FieldError
@@ -236,17 +219,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
                   .filter(Boolean)
                   .join(' ') || undefined
               }
-              {...register('password', {
-                required: 'Wpisz hasło.',
-                minLength: {
-                  value: registering ? 8 : 1,
-                  message: 'Hasło musi mieć co najmniej 8 znaków.',
-                },
-                maxLength: {
-                  value: 128,
-                  message: 'Hasło może mieć maksymalnie 128 znaków.',
-                },
-              })}
+              {...register('password')}
             />
             <button
               type="button"
