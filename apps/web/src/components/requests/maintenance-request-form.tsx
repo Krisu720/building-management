@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import Link from 'next/link';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { useController, useForm, useWatch } from 'react-hook-form';
 import {
@@ -24,6 +25,8 @@ import { RequestAttachments } from './request-attachments';
 import { createIssuePayload } from './issue-payload';
 import {
   getApartmentsFindAllQueryKey,
+  getIssuesFindAllQueryKey,
+  getIssuesFindMineQueryKey,
   useApartmentsFindAll,
   useBuildingsFindAll,
   useIssuesCreate,
@@ -273,6 +276,12 @@ export function MaintenanceRequestForm() {
     try {
       const issue = await createIssue.mutateAsync({
         data: createIssuePayload(values),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: getIssuesFindAllQueryKey(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: getIssuesFindMineQueryKey(),
       });
       setConfirmation({
         issue,
@@ -757,6 +766,15 @@ export function MaintenanceRequestForm() {
                   {confirmation.issue.description}
                 </p>
               </div>
+              <Link
+                href="/my-requests"
+                className={
+                  pressClassName +
+                  ' mr-3 inline-flex h-[40px] items-center gap-2 rounded-md bg-[#0866f5] px-4 text-[13px] font-medium text-white hover:bg-[#0057dc]'
+                }
+              >
+                Moje zgłoszenia <ArrowRight size={16} aria-hidden="true" />
+              </Link>
               <button
                 type="button"
                 className={
