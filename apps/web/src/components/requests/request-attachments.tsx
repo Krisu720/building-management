@@ -51,10 +51,12 @@ export function RequestAttachments({
   files,
   onChange,
   validationError,
+  disabled = false,
 }: {
   files: File[];
   onChange: (files: File[]) => void;
   validationError?: string;
+  disabled?: boolean;
 }) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -63,7 +65,7 @@ export function RequestAttachments({
   const error = selectionError || validationError;
 
   function addFiles(selected: File[]) {
-    if (!selected.length) return;
+    if (disabled || !selected.length) return;
     const existingKeys = new Set(files.map(fileKey));
     const added = selected.filter((file) => {
       const key = fileKey(file);
@@ -103,6 +105,7 @@ export function RequestAttachments({
         type="file"
         accept={issuePhotoMimeTypes.join(',')}
         multiple
+        disabled={disabled}
         className="hidden"
         onChange={(event) => {
           addFiles(Array.from(event.target.files ?? []));
@@ -113,10 +116,11 @@ export function RequestAttachments({
         className={cn(
           'rounded-lg border border-dashed border-[#cfd9e7] bg-[#fcfdff] transition-colors duration-150',
           dragging && 'border-[#0866f5] bg-[#f1f6ff]',
+          disabled && 'opacity-60',
           error && 'border-[#d56a61]',
         )}
         onDragOver={(event) => {
-          if (!event.dataTransfer.types.includes('Files')) return;
+          if (disabled || !event.dataTransfer.types.includes('Files')) return;
           event.preventDefault();
           event.dataTransfer.dropEffect = 'copy';
           setDragging(true);
@@ -138,7 +142,8 @@ export function RequestAttachments({
       >
         <button
           type="button"
-          className="flex min-h-[104px] w-full flex-col items-center justify-center gap-2 rounded-lg px-4 py-3 text-center outline-none hover:bg-[#f6f9fe] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6ea8ff] motion-reduce:transition-none"
+          disabled={disabled}
+          className="disabled:cursor-not-allowed flex min-h-[104px] w-full flex-col items-center justify-center gap-2 rounded-lg px-4 py-3 text-center outline-none hover:bg-[#f6f9fe] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6ea8ff] motion-reduce:transition-none"
           aria-labelledby={id + '-label ' + id + '-action'}
           aria-describedby={id + '-hint' + (error ? ' ' + id + '-error' : '')}
           aria-invalid={!!error}

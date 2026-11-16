@@ -4,8 +4,8 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { useController, useForm, useWatch } from 'react-hook-form';
 import {
-  ArrowLeft,
   ArrowRight,
+  LoaderCircle,
   Building2,
   Bell,
   Clock3,
@@ -21,9 +21,19 @@ import {
 } from 'lucide-react';
 import { FieldError } from '@/components/ui/field-error';
 import { RequestAttachments } from './request-attachments';
-import { createIssueDraft, type IssueDraft } from './issue-draft';
+import { createIssuePayload } from './issue-payload';
+import {
+  getApartmentsFindAllQueryKey,
+  useApartmentsFindAll,
+  useBuildingsFindAll,
+  useIssuesCreate,
+} from '@/lib/api/generated';
+import type { Apartment, Issue } from '@/lib/api/models';
+import { getApiErrorMessage } from '@/lib/api/fetch';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   createIssueFormSchema,
+  getIssueDescription,
   issueFormLimits,
   type IssueBuilding,
   type IssueApartment,
@@ -31,8 +41,8 @@ import {
   type IssueFormValues,
 } from './issue-form-schema';
 
-type IssuePreview = {
-  issue: IssueDraft;
+type IssueConfirmation = {
+  issue: Issue;
   buildingLabel: string;
   apartmentLabel: string | null;
 };
@@ -87,7 +97,7 @@ function RequestGuidance() {
           {[
             'Napisz, co nie działa i w którym miejscu.',
             'Podaj, od kiedy występuje problem i czy się powtarza.',
-            'Dodaj zdjęcie, na którym dobrze widać usterkę.',
+            'Opisz, czy usterka utrudnia korzystanie z mieszkania lub budynku.',
             'Przed wysłaniem sprawdź adres i numer mieszkania.',
           ].map((tip) => (
             <li
@@ -117,7 +127,7 @@ function RequestGuidance() {
         </h2>
         <p className="mt-4 text-[13px] leading-[1.65] text-[#526077]">
           Po wysłaniu zgłoszenia otrzymasz potwierdzenie oraz numer zgłoszenia.
-          Jego status sprawdzisz w sekcji „Moje zgłoszenia”.
+          Zachowaj go na potrzeby kontaktu z administracją.
         </p>
         <dl className="mt-4 divide-y divide-[#e5eaf1] border-y border-[#e5eaf1] text-[12px]">
           <div className="flex items-center justify-between gap-3 py-3">
@@ -187,17 +197,18 @@ function RequestGuidance() {
   );
 }
 
-export function MaintenanceRequestForm({
-  buildings = emptyBuildings,
-  apartments = emptyApartments,
-}: {
-  buildings?: readonly IssueBuilding[];
-  apartments?: readonly IssueApartment[];
-}) {
+export function MaintenanceRequestForm() {
+  const queryClient = useQueryClient();
+  const buildingsQuery = useBuildingsFindAll();
+  const buildings = buildingsQuery.data ?? emptyBuildings;
+  const createIssue = useIssuesCreate();
+  const submissionInFlight = useRef(false);
   const id = useId();
-  const previewRef = useRef<HTMLDivElement>(null);
+  const confirmationRef = useRef<HTMLDivElement>(null);
   const [attachmentVersion, setAttachmentVersion] = useState(0);
-  const [preview, setPreview] = useState<IssuePreview | null>(null);
+  const [confirmation, setConfirmation] = useState<IssueConfirmation | null>(
+    null,
+  );
   const {
     register,
     control,
@@ -205,11 +216,19 @@ export function MaintenanceRequestForm({
     reset,
     resetField,
     setFocus,
-    formState: { errors },
+    setError,
+    clearErrors,
+    formState: { errors, isSubmitting },
   } = useForm<IssueFormInput, unknown, IssueFormValues>({
-    resolver: standardSchemaResolver(
-      createIssueFormSchema(buildings, apartments),
-    ),
+    resolver: (values, context, options) =>
+      standardSchemaResolver(
+        createIssueFormSchema(
+          buildings,
+          queryClient.getQueryData<Apartment[]>(
+            getApartmentsFindAllQueryKey({ buildingId: values.buildingId }),
+          ) ?? emptyApartments,
+        ),
+      )(values, context, options),
     defaultValues,
     shouldUnregister: true,
   });
@@ -222,30 +241,56 @@ export function MaintenanceRequestForm({
   const description = useWatch({ control, name: 'description' }) ?? '';
   const isApartment = scope === 'apartment';
   const buildingId = useWatch({ control, name: 'buildingId' });
-  const availableApartments = apartments.filter(
+  const apartmentsQuery = useApartmentsFindAll(
+    { buildingId: buildingId || undefined },
+    { query: { enabled: !!buildingId && isApartment } },
+  );
+  const availableApartments = (apartmentsQuery.data ?? emptyApartments).filter(
     (apartment) => apartment.buildingId === buildingId,
   );
+  const commonLocation = useWatch({ control, name: 'commonLocation' }) ?? '';
+  const descriptionLimit =
+    issueFormLimits.description -
+    getIssueDescription({ scope, description: '', commonLocation }).length;
+  const isSending = isSubmitting || createIssue.isPending;
 
   useEffect(() => {
-    if (preview) previewRef.current?.focus();
-  }, [preview]);
+    if (confirmation) confirmationRef.current?.focus();
+  }, [confirmation]);
 
-  function preparePreview(values: IssueFormValues) {
+  async function submit(values: IssueFormValues) {
+    if (submissionInFlight.current) return;
     const building = buildings.find((item) => item.id === values.buildingId);
     const apartment = availableApartments.find(
       (item) => item.id === values.apartmentId,
     );
-    if (!building || (values.scope === 'apartment' && !apartment)) return;
-
-    setPreview({
-      issue: createIssueDraft(values),
-      buildingLabel: building.name + ' — ' + building.address,
-      apartmentLabel: apartment?.number ?? null,
-    });
+    if (!building) {
+      setError('buildingId', { message: 'Wybierz budynek z listy.' });
+      return;
+    }
+    submissionInFlight.current = true;
+    clearErrors('root.server');
+    try {
+      const issue = await createIssue.mutateAsync({
+        data: createIssuePayload(values),
+      });
+      setConfirmation({
+        issue,
+        buildingLabel: building.name + ' — ' + building.address,
+        apartmentLabel: apartment?.number ?? null,
+      });
+      reset(defaultValues);
+      setAttachmentVersion((value) => value + 1);
+    } catch (error) {
+      setError('root.server', { message: getApiErrorMessage(error) });
+    } finally {
+      submissionInFlight.current = false;
+    }
   }
 
-  function edit() {
-    setPreview(null);
+  function startNewRequest() {
+    setConfirmation(null);
+    createIssue.reset();
     requestAnimationFrame(() => setFocus('title'));
   }
 
@@ -258,7 +303,7 @@ export function MaintenanceRequestForm({
           </h1>
         </div>
         <p className="max-w-[650px] text-[13px] leading-[1.7] text-[#7a8799]">
-          Uzupełnij formularz i sprawdź podgląd zgłoszenia.
+          Uzupełnij formularz i wyślij zgłoszenie do administracji.
         </p>
       </header>
 
@@ -272,313 +317,399 @@ export function MaintenanceRequestForm({
               aria-hidden="true"
             />
             <h2 className="text-[16px] font-semibold tracking-[-0.3px] text-[#263448]">
-              {preview ? 'Podgląd zgłoszenia' : 'Szczegóły zgłoszenia'}
+              {confirmation ? 'Zgłoszenie wysłane' : 'Szczegóły zgłoszenia'}
             </h2>
           </header>
 
           <form
             noValidate
-            onSubmit={handleSubmit(preparePreview)}
-            hidden={!!preview}
-            className="space-y-4 p-[22px] max-[560px]:p-4"
+            onSubmit={handleSubmit(submit)}
+            onChange={() => clearErrors('root.server')}
+            aria-busy={isSending}
+            hidden={!!confirmation}
+            className="p-[22px] max-[560px]:p-4"
           >
-            <fieldset>
-              <legend className={labelClassName}>
-                Dotyczy
-                <RequiredMark />
-              </legend>
-              <div className="grid max-w-[380px] grid-cols-2 gap-3">
-                {(
-                  [
-                    { value: 'apartment', label: 'Mieszkanie', icon: House },
-                    {
-                      value: 'common',
-                      label: 'Część wspólna',
-                      icon: Building2,
-                    },
-                  ] as const
-                ).map(({ value, label, icon: Icon }) => (
-                  <label
-                    key={value}
-                    className="flex cursor-pointer items-center gap-2.5 rounded-md border border-[#dfe5ed] px-3 py-2 text-[13px] text-[#66758a] has-checked:border-[#0866f5] has-checked:bg-[#f6f9ff] has-checked:text-[#0866f5] has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[#6ea8ff]"
-                  >
-                    <input
-                      type="radio"
-                      value={value}
-                      {...register('scope')}
-                      className="size-3.5 shrink-0 accent-[#0866f5]"
-                    />
-                    <Icon
-                      size={15}
-                      className="hidden min-[450px]:block"
-                      aria-hidden="true"
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
-              <p className="mt-2 text-[11px] leading-relaxed text-[#8792a2]">
-                Wybierz mieszkanie lub część wspólną, np. klatkę schodową, windę
-                albo garaż.
-              </p>
-            </fieldset>
-
-            <div>
-              <label className={labelClassName} htmlFor={id + '-title'}>
-                Temat usterki
-                <RequiredMark />
-              </label>
-              <input
-                className={inputClassName}
-                id={id + '-title'}
-                placeholder="Np. Cieknący kran w kuchni"
-                aria-required="true"
-                aria-invalid={!!errors.title}
-                aria-describedby={
-                  errors.title ? id + '-title-error' : undefined
-                }
-                maxLength={issueFormLimits.title}
-                {...register('title')}
-              />
-              <FieldError
-                id={id + '-title-error'}
-                message={errors.title?.message}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 max-[560px]:grid-cols-1">
-              <div className="min-w-0">
-                <label className={labelClassName} htmlFor={id + '-building'}>
-                  Budynek
+            <fieldset disabled={isSending} className="min-w-0 space-y-4">
+              <fieldset>
+                <legend className={labelClassName}>
+                  Dotyczy
                   <RequiredMark />
-                </label>
-                <div className="relative">
-                  <Building2
-                    size={16}
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8792a2]"
-                    aria-hidden="true"
-                  />
-                  <select
-                    className={selectClassName}
-                    id={id + '-building'}
-                    disabled={!buildings.length}
-                    aria-required="true"
-                    aria-invalid={!!errors.buildingId}
-                    aria-describedby={
-                      [
-                        !buildings.length && id + '-building-hint',
-                        errors.buildingId && id + '-building-error',
-                      ]
-                        .filter(Boolean)
-                        .join(' ') || undefined
-                    }
-                    {...register('buildingId', {
-                      onChange: () => resetField('apartmentId'),
-                    })}
-                  >
-                    <option value="">
-                      {buildings.length
-                        ? 'Wybierz budynek'
-                        : 'Brak dostępnych budynków'}
-                    </option>
-                    {buildings.map((building) => (
-                      <option key={building.id} value={building.id}>
-                        {building.name} — {building.address}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={15}
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#8792a2]"
-                    aria-hidden="true"
-                  />
-                </div>
-                <FieldError
-                  id={id + '-building-error'}
-                  message={errors.buildingId?.message}
-                />
-                {!buildings.length && (
-                  <p
-                    id={id + '-building-hint'}
-                    className="mt-1.5 text-[11px] leading-relaxed text-[#8792a2]"
-                  >
-                    Lista budynków nie jest jeszcze dostępna.
-                  </p>
-                )}
-              </div>
-              <div className="min-w-0">
-                <label className={labelClassName} htmlFor={id + '-location'}>
-                  {isApartment ? 'Mieszkanie' : 'Miejsce usterki'}
-                  <RequiredMark />
-                </label>
-                <div className="relative">
-                  <MapPin
-                    size={16}
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8792a2]"
-                    aria-hidden="true"
-                  />
-                  {isApartment ? (
-                    <>
-                      <select
-                        key="apartment"
-                        className={selectClassName}
-                        id={id + '-location'}
-                        disabled={!buildingId || !availableApartments.length}
-                        aria-required="true"
-                        aria-invalid={!!errors.apartmentId}
-                        aria-describedby={
-                          [
-                            (!buildingId || !availableApartments.length) &&
-                              id + '-apartment-hint',
-                            errors.apartmentId && id + '-location-error',
-                          ]
-                            .filter(Boolean)
-                            .join(' ') || undefined
-                        }
-                        {...register('apartmentId')}
-                      >
-                        <option value="">
-                          {!buildingId
-                            ? 'Najpierw wybierz budynek'
-                            : availableApartments.length
-                              ? 'Wybierz mieszkanie'
-                              : 'Brak dostępnych mieszkań'}
-                        </option>
-                        {availableApartments.map((apartment) => (
-                          <option key={apartment.id} value={apartment.id}>
-                            Mieszkanie {apartment.number}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown
+                </legend>
+                <div className="grid max-w-[380px] grid-cols-2 gap-3">
+                  {(
+                    [
+                      { value: 'apartment', label: 'Mieszkanie', icon: House },
+                      {
+                        value: 'common',
+                        label: 'Część wspólna',
+                        icon: Building2,
+                      },
+                    ] as const
+                  ).map(({ value, label, icon: Icon }) => (
+                    <label
+                      key={value}
+                      className="flex cursor-pointer items-center gap-2.5 rounded-md border border-[#dfe5ed] px-3 py-2 text-[13px] text-[#66758a] has-checked:border-[#0866f5] has-checked:bg-[#f6f9ff] has-checked:text-[#0866f5] has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[#6ea8ff]"
+                    >
+                      <input
+                        type="radio"
+                        value={value}
+                        {...register('scope')}
+                        className="size-3.5 shrink-0 accent-[#0866f5]"
+                      />
+                      <Icon
                         size={15}
-                        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#8792a2]"
+                        className="hidden min-[450px]:block"
                         aria-hidden="true"
                       />
-                    </>
-                  ) : (
-                    <input
-                      key="common"
-                      className={inputClassName + ' pl-9'}
-                      id={id + '-location'}
-                      placeholder="Np. klatka B, 2. piętro"
-                      aria-required="true"
-                      aria-invalid={!!errors.commonLocation}
-                      aria-describedby={
-                        errors.commonLocation
-                          ? id + '-location-error'
-                          : undefined
-                      }
-                      maxLength={issueFormLimits.commonLocation}
-                      {...register('commonLocation')}
-                    />
-                  )}
+                      <span>{label}</span>
+                    </label>
+                  ))}
                 </div>
-                <FieldError
-                  id={id + '-location-error'}
-                  message={
-                    isApartment
-                      ? errors.apartmentId?.message
-                      : errors.commonLocation?.message
+                <p className="mt-2 text-[11px] leading-relaxed text-[#8792a2]">
+                  Wybierz mieszkanie lub część wspólną, np. klatkę schodową,
+                  windę albo garaż.
+                </p>
+              </fieldset>
+
+              <div>
+                <label className={labelClassName} htmlFor={id + '-title'}>
+                  Temat usterki
+                  <RequiredMark />
+                </label>
+                <input
+                  className={inputClassName}
+                  id={id + '-title'}
+                  placeholder="Np. Cieknący kran w kuchni"
+                  aria-required="true"
+                  aria-invalid={!!errors.title}
+                  aria-describedby={
+                    errors.title ? id + '-title-error' : undefined
                   }
+                  maxLength={issueFormLimits.title}
+                  {...register('title')}
                 />
-                {isApartment &&
-                  (!buildingId || !availableApartments.length) && (
+                <FieldError
+                  id={id + '-title-error'}
+                  message={errors.title?.message}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 max-[560px]:grid-cols-1">
+                <div className="min-w-0">
+                  <label className={labelClassName} htmlFor={id + '-building'}>
+                    Budynek
+                    <RequiredMark />
+                  </label>
+                  <div className="relative">
+                    <Building2
+                      size={16}
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8792a2]"
+                      aria-hidden="true"
+                    />
+                    <select
+                      className={selectClassName}
+                      id={id + '-building'}
+                      disabled={
+                        buildingsQuery.isLoading ||
+                        buildingsQuery.isError ||
+                        !buildings.length
+                      }
+                      aria-required="true"
+                      aria-invalid={!!errors.buildingId}
+                      aria-describedby={
+                        [
+                          (!buildings.length || buildingsQuery.isError) &&
+                            id + '-building-hint',
+                          errors.buildingId && id + '-building-error',
+                        ]
+                          .filter(Boolean)
+                          .join(' ') || undefined
+                      }
+                      {...register('buildingId', {
+                        onChange: () => resetField('apartmentId'),
+                      })}
+                    >
+                      <option value="">
+                        {buildingsQuery.isLoading
+                          ? 'Ładowanie budynków…'
+                          : buildingsQuery.isError
+                            ? 'Nie udało się pobrać budynków'
+                            : buildings.length
+                              ? 'Wybierz budynek'
+                              : 'Brak dostępnych budynków'}
+                      </option>
+                      {buildings.map((building) => (
+                        <option key={building.id} value={building.id}>
+                          {building.name} — {building.address}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      size={15}
+                      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#8792a2]"
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <FieldError
+                    id={id + '-building-error'}
+                    message={errors.buildingId?.message}
+                  />
+                  {(!buildings.length || buildingsQuery.isError) && (
                     <p
-                      id={id + '-apartment-hint'}
+                      id={id + '-building-hint'}
                       className="mt-1.5 text-[11px] leading-relaxed text-[#8792a2]"
                     >
-                      {!buildingId
-                        ? 'Mieszkania są przypisane do wybranego budynku.'
-                        : 'Lista mieszkań dla tego budynku nie jest jeszcze dostępna.'}
+                      {buildingsQuery.isError
+                        ? getApiErrorMessage(buildingsQuery.error)
+                        : buildingsQuery.isLoading
+                          ? 'Ładowanie listy budynków…'
+                          : 'Nie ma jeszcze budynków do wyboru.'}
+                      {buildingsQuery.isError && (
+                        <button
+                          type="button"
+                          disabled={buildingsQuery.isFetching}
+                          onClick={() => void buildingsQuery.refetch()}
+                          className="ml-2 font-medium text-[#0866f5] underline underline-offset-2 disabled:opacity-50"
+                        >
+                          Spróbuj ponownie
+                        </button>
+                      )}
                     </p>
                   )}
+                </div>
+                <div className="min-w-0">
+                  <label className={labelClassName} htmlFor={id + '-location'}>
+                    {isApartment ? 'Mieszkanie' : 'Miejsce usterki'}
+                    <RequiredMark />
+                  </label>
+                  <div className="relative">
+                    <MapPin
+                      size={16}
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8792a2]"
+                      aria-hidden="true"
+                    />
+                    {isApartment ? (
+                      <>
+                        <select
+                          key="apartment"
+                          className={selectClassName}
+                          id={id + '-location'}
+                          disabled={
+                            !buildingId ||
+                            apartmentsQuery.isLoading ||
+                            apartmentsQuery.isError ||
+                            !availableApartments.length
+                          }
+                          aria-required="true"
+                          aria-invalid={!!errors.apartmentId}
+                          aria-describedby={
+                            [
+                              (!buildingId ||
+                                apartmentsQuery.isLoading ||
+                                apartmentsQuery.isError ||
+                                !availableApartments.length) &&
+                                id + '-apartment-hint',
+                              errors.apartmentId && id + '-location-error',
+                            ]
+                              .filter(Boolean)
+                              .join(' ') || undefined
+                          }
+                          {...register('apartmentId')}
+                        >
+                          <option value="">
+                            {!buildingId
+                              ? 'Najpierw wybierz budynek'
+                              : apartmentsQuery.isLoading
+                                ? 'Ładowanie mieszkań…'
+                                : apartmentsQuery.isError
+                                  ? 'Nie udało się pobrać mieszkań'
+                                  : availableApartments.length
+                                    ? 'Wybierz mieszkanie'
+                                    : 'Brak dostępnych mieszkań'}
+                          </option>
+                          {availableApartments.map((apartment) => (
+                            <option key={apartment.id} value={apartment.id}>
+                              Mieszkanie {apartment.number}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown
+                          size={15}
+                          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#8792a2]"
+                          aria-hidden="true"
+                        />
+                      </>
+                    ) : (
+                      <input
+                        key="common"
+                        className={inputClassName + ' pl-9'}
+                        id={id + '-location'}
+                        placeholder="Np. klatka B, 2. piętro"
+                        aria-required="true"
+                        aria-invalid={!!errors.commonLocation}
+                        aria-describedby={
+                          errors.commonLocation
+                            ? id + '-location-error'
+                            : undefined
+                        }
+                        maxLength={issueFormLimits.commonLocation}
+                        {...register('commonLocation')}
+                      />
+                    )}
+                  </div>
+                  <FieldError
+                    id={id + '-location-error'}
+                    message={
+                      isApartment
+                        ? errors.apartmentId?.message
+                        : errors.commonLocation?.message
+                    }
+                  />
+                  {isApartment &&
+                    (!buildingId ||
+                      apartmentsQuery.isLoading ||
+                      apartmentsQuery.isError ||
+                      !availableApartments.length) && (
+                      <p
+                        id={id + '-apartment-hint'}
+                        className="mt-1.5 text-[11px] leading-relaxed text-[#8792a2]"
+                      >
+                        {!buildingId
+                          ? 'Mieszkania są przypisane do wybranego budynku.'
+                          : apartmentsQuery.isError
+                            ? getApiErrorMessage(apartmentsQuery.error)
+                            : apartmentsQuery.isLoading
+                              ? 'Ładowanie listy mieszkań…'
+                              : 'W tym budynku nie ma jeszcze mieszkań do wyboru.'}
+                        {buildingId && apartmentsQuery.isError && (
+                          <button
+                            type="button"
+                            disabled={apartmentsQuery.isFetching}
+                            onClick={() => void apartmentsQuery.refetch()}
+                            className="ml-2 font-medium text-[#0866f5] underline underline-offset-2 disabled:opacity-50"
+                          >
+                            Spróbuj ponownie
+                          </button>
+                        )}
+                      </p>
+                    )}
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className={labelClassName} htmlFor={id + '-description'}>
-                Opis problemu
-                <RequiredMark />
-              </label>
-              <div className="relative">
-                <textarea
-                  className={
-                    inputClassName +
-                    ' min-h-[110px] resize-y pb-8 pt-3 leading-[1.7]'
-                  }
-                  id={id + '-description'}
-                  placeholder="Opisz, co nie działa, od kiedy występuje problem i jakie są objawy…"
-                  aria-required="true"
-                  aria-invalid={!!errors.description}
-                  aria-describedby={
-                    id +
-                    '-description-hint' +
-                    (errors.description ? ' ' + id + '-description-error' : '')
-                  }
-                  maxLength={issueFormLimits.description}
-                  {...register('description')}
+              <div>
+                <label className={labelClassName} htmlFor={id + '-description'}>
+                  Opis problemu
+                  <RequiredMark />
+                </label>
+                <div className="relative">
+                  <textarea
+                    className={
+                      inputClassName +
+                      ' min-h-[110px] resize-y pb-8 pt-3 leading-[1.7]'
+                    }
+                    id={id + '-description'}
+                    placeholder="Opisz, co nie działa, od kiedy występuje problem i jakie są objawy…"
+                    aria-required="true"
+                    aria-invalid={!!errors.description}
+                    aria-describedby={
+                      id +
+                      '-description-hint' +
+                      (errors.description
+                        ? ' ' + id + '-description-error'
+                        : '')
+                    }
+                    maxLength={descriptionLimit}
+                    {...register('description')}
+                  />
+                  <span
+                    className="pointer-events-none absolute bottom-2.5 right-3 text-[10px] tabular-nums text-[#8792a2]"
+                    aria-hidden="true"
+                  >
+                    {description.length} / {descriptionLimit}
+                  </span>
+                </div>
+                <FieldError
+                  id={id + '-description-error'}
+                  message={errors.description?.message}
                 />
-                <span
-                  className="pointer-events-none absolute bottom-2.5 right-3 text-[10px] tabular-nums text-[#8792a2]"
-                  aria-hidden="true"
+                <p
+                  id={id + '-description-hint'}
+                  className="mt-1.5 text-[11px] leading-relaxed text-[#8792a2]"
                 >
-                  {description.length} / {issueFormLimits.description}
-                </span>
+                  Im więcej szczegółów, tym łatwiej będzie ustalić przyczynę
+                  usterki.
+                </p>
               </div>
-              <FieldError
-                id={id + '-description-error'}
-                message={errors.description?.message}
+
+              <RequestAttachments
+                files={files}
+                onChange={photosField.onChange}
+                validationError={photosError?.message}
+                disabled={isSending}
+                key={attachmentVersion}
               />
-              <p
-                id={id + '-description-hint'}
-                className="mt-1.5 text-[11px] leading-relaxed text-[#8792a2]"
-              >
-                Im więcej szczegółów, tym łatwiej będzie ustalić przyczynę
-                usterki.
-              </p>
-            </div>
 
-            <RequestAttachments
-              files={files}
-              onChange={photosField.onChange}
-              validationError={photosError?.message}
-              key={attachmentVersion}
-            />
-
-            <div className="flex flex-wrap items-center gap-3 border-t border-[#edf0f5] pt-3.5">
-              <button
-                type="submit"
-                disabled={
-                  !buildings.length ||
-                  (isApartment && !availableApartments.length)
-                }
-                className={
-                  pressClassName +
-                  ' inline-flex h-[40px] items-center justify-center gap-2 rounded-md bg-[#0866f5] px-4 text-[13px] font-medium text-white enabled:hover:bg-[#0057dc] disabled:cursor-not-allowed disabled:opacity-45'
-                }
-              >
-                Wyślij zgłoszenie <ArrowRight size={16} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className={
-                  pressClassName +
-                  ' h-[40px] rounded-md border border-[#dfe5ed] px-4 text-[13px] font-medium text-[#66758a] hover:bg-[#f6f8fb]'
-                }
-                onClick={() => {
-                  reset(defaultValues);
-                  setAttachmentVersion((value) => value + 1);
-                }}
-              >
-                Wyczyść formularz
-              </button>
-            </div>
+              {errors.root?.server?.message && (
+                <div
+                  role="alert"
+                  className="rounded-md border border-[#f0d2ce] bg-[#fff6f4] px-3 py-2.5 text-[13px] leading-relaxed text-[#a03830]"
+                >
+                  {errors.root.server.message}
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-3 border-t border-[#edf0f5] pt-3.5">
+                <button
+                  type="submit"
+                  disabled={
+                    isSending ||
+                    buildingsQuery.isError ||
+                    !buildings.length ||
+                    (isApartment &&
+                      (apartmentsQuery.isLoading ||
+                        apartmentsQuery.isError ||
+                        !availableApartments.length))
+                  }
+                  className={
+                    pressClassName +
+                    ' inline-flex h-[40px] items-center justify-center gap-2 rounded-md bg-[#0866f5] px-4 text-[13px] font-medium text-white enabled:hover:bg-[#0057dc] disabled:cursor-not-allowed disabled:opacity-45'
+                  }
+                >
+                  {isSending ? (
+                    <>
+                      <LoaderCircle
+                        size={16}
+                        className="animate-spin motion-reduce:animate-none"
+                        aria-hidden="true"
+                      />{' '}
+                      Wysyłanie…
+                    </>
+                  ) : (
+                    <>
+                      Wyślij zgłoszenie{' '}
+                      <ArrowRight size={16} aria-hidden="true" />
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className={
+                    pressClassName +
+                    ' h-[40px] rounded-md border border-[#dfe5ed] px-4 text-[13px] font-medium text-[#66758a] hover:bg-[#f6f8fb]'
+                  }
+                  onClick={() => {
+                    reset(defaultValues);
+                    setAttachmentVersion((value) => value + 1);
+                  }}
+                >
+                  Wyczyść formularz
+                </button>
+              </div>
+            </fieldset>
           </form>
 
-          {preview && (
+          {confirmation && (
             <div
-              ref={previewRef}
+              ref={confirmationRef}
               tabIndex={-1}
               className="p-6 outline-none max-[560px]:p-4"
             >
@@ -591,22 +722,27 @@ export function MaintenanceRequestForm({
                   className="mt-0.5 shrink-0 text-[#0866f5]"
                   aria-hidden="true"
                 />
-                <p>To podgląd. Zgłoszenie nie zostało wysłane ani zapisane.</p>
+                <div>
+                  <p>Zgłoszenie zostało zapisane. Numer zgłoszenia:</p>
+                  <p className="mt-1 break-all font-mono text-[12px]">
+                    {confirmation.issue.id}
+                  </p>
+                </div>
               </div>
               <h3 className="break-words text-[20px] font-medium leading-snug tracking-[-0.4px] text-[#263448]">
-                {preview.issue.title}
+                {confirmation.issue.title}
               </h3>
               <dl className="mt-5 grid grid-cols-2 gap-x-5 gap-y-4 text-[13px] max-[560px]:grid-cols-1">
                 {[
                   [
                     'Dotyczy',
-                    preview.issue.apartmentId
+                    confirmation.issue.apartmentId
                       ? 'Mieszkania'
                       : 'Części wspólnej',
                   ],
-                  ['Budynek', preview.buildingLabel],
-                  ...(preview.issue.apartmentId
-                    ? [['Numer mieszkania', preview.apartmentLabel]]
+                  ['Budynek', confirmation.buildingLabel],
+                  ...(confirmation.issue.apartmentId
+                    ? [['Numer mieszkania', confirmation.apartmentLabel]]
                     : []),
                 ].map(([label, value]) => (
                   <div key={label} className="min-w-0">
@@ -618,35 +754,19 @@ export function MaintenanceRequestForm({
               <div className="my-6 border-t border-[#edf0f5] pt-3.5">
                 <h4 className="text-[12px] text-[#8792a2]">Opis problemu</h4>
                 <p className="mt-2 whitespace-pre-wrap break-words text-[13px] leading-[1.8] text-[#40506a]">
-                  {preview.issue.description}
+                  {confirmation.issue.description}
                 </p>
               </div>
-              <h4 className="flex items-center gap-2 text-[12px] text-[#8792a2]">
-                <FileText size={15} aria-hidden="true" /> Zdjęcia (
-                {files.length})
-              </h4>
-              {files.length ? (
-                <ul className="mt-2 space-y-1 text-[13px] text-[#40506a]">
-                  {files.map((file, index) => (
-                    <li key={index} className="break-words">
-                      {file.name}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-[13px] text-[#8792a2]">
-                  Nie dodano zdjęć.
-                </p>
-              )}
               <button
                 type="button"
                 className={
                   pressClassName +
                   ' mt-7 inline-flex h-[40px] items-center gap-2 rounded-md border border-[#dfe5ed] px-4 text-[13px] font-medium text-[#40506a] hover:bg-[#f6f8fb]'
                 }
-                onClick={edit}
+                onClick={startNewRequest}
               >
-                <ArrowLeft size={16} aria-hidden="true" /> Wróć do edycji
+                <ArrowRight size={16} aria-hidden="true" /> Wyślij kolejne
+                zgłoszenie
               </button>
             </div>
           )}

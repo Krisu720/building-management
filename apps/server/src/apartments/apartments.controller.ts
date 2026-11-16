@@ -27,7 +27,7 @@ export class ApartmentsController {
 
   @Get()
   @UserHasPermission({ permission: { apartment: ['read'] } })
-  @ApiQuery({ name: 'buildingId', required: false, description: 'Filtr po budynku (uuid)' })
+  @ApiQuery({ name: 'buildingId', required: false, description: 'Filtr po budynku (uuid)', schema: { type: 'string', format: 'uuid' } })
   @ApiOkResponse({ standardSchema: ApartmentSchema, isArray: true })
   @ApiBadRequestResponse({ description: 'Niepoprawne dane wejściowe', standardSchema: ErrorResponseSchema })
   findAll(@Query({ schema: ListApartmentsQuerySchema }) query: ListApartmentsQuery) {

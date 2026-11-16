@@ -297,7 +297,10 @@
             "required": false,
             "in": "query",
             "description": "Filtr po budynku (uuid)",
-            "schema": {}
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {

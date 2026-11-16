@@ -1,12 +1,13 @@
 import { z } from 'zod/v4';
+import type { Apartment, Building } from '@/lib/api/models';
 
-export type IssueBuilding = { id: string; name: string; address: string };
-export type IssueApartment = { id: string; buildingId: string; number: string };
+export type IssueBuilding = Pick<Building, 'id' | 'name' | 'address'>;
+export type IssueApartment = Pick<Apartment, 'id' | 'buildingId' | 'number'>;
 
 export const issueFormLimits = {
   title: 120,
   commonLocation: 120,
-  description: 1000,
+  description: 1200,
   photos: 5,
   photosTotalBytes: 10 * 1024 * 1024,
 } as const;
@@ -74,7 +75,7 @@ const commonFields = {
     .min(1, 'Opisz problem.')
     .max(
       issueFormLimits.description,
-      'Opis może mieć maksymalnie 1000 znaków.',
+      'Opis może mieć maksymalnie 1200 znaków.',
     ),
   photos: issuePhotosSchema.default([]),
 };
@@ -103,6 +104,20 @@ export function createIssueFormSchema(
   apartments: readonly IssueApartment[],
 ) {
   return issueFormSchema.superRefine((values, ctx) => {
+    if (
+      !z
+        .string()
+        .max(issueFormLimits.description)
+        .safeParse(getIssueDescription(values)).success
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['description'],
+        message:
+          'Opis razem z miejscem usterki może mieć maksymalnie 1200 znaków.',
+      });
+    }
+
     if (!buildings.some((building) => building.id === values.buildingId)) {
       ctx.addIssue({
         code: 'custom',
@@ -129,3 +144,15 @@ export function createIssueFormSchema(
 
 export type IssueFormInput = z.input<typeof issueFormSchema>;
 export type IssueFormValues = z.output<typeof issueFormSchema>;
+
+export function getIssueDescription(values: {
+  scope: 'apartment' | 'common';
+  description: string;
+  commonLocation?: string;
+}) {
+  const location =
+    values.scope === 'common' ? values.commonLocation?.trim() : undefined;
+  return location
+    ? 'Miejsce usterki: ' + location + '\n\n' + values.description
+    : values.description;
+}
