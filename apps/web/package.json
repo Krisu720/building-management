@@ -9,13 +9,9 @@
     "start": "next start --port 3001",
     "check-types": "next typegen && tsc --noEmit",
     "lint": "oxlint src/",
-<<<<<<< Updated upstream
-    "api:generate": "orval --config orval.config.ts"
-=======
     "api:generate": "orval --config orval.config.ts",
     "test:e2e": "varlock run --path ../../ --inject vars -- playwright test --ui",
     "test:e2e:run": "varlock run --path ../../ --inject vars -- playwright test"
->>>>>>> Stashed changes
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
