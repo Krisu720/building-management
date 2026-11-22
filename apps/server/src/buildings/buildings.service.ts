@@ -34,9 +34,7 @@ export class BuildingsService {
 
     return buildingRows.map((building) => ({
       ...building,
-      apartments: (apartmentsByBuilding.get(building.id) ?? []).sort((a, b) =>
-        a.number.localeCompare(b.number, 'pl', { numeric: true }),
-      ),
+      apartments: sortApartments(apartmentsByBuilding.get(building.id) ?? []),
     }));
   }
 
@@ -45,9 +43,37 @@ export class BuildingsService {
     return row ?? notFound(id);
   }
 
-  async create(data: CreateBuilding) {
-    const [row] = await this.db.insert(buildings).values(data).returning();
-    return row!;
+  async create(data: CreateBuilding, adminId?: string) {
+    const apartmentNumbers = data.apartments ?? [];
+
+    return this.db.transaction(async (tx) => {
+      const [building] = await tx
+        .insert(buildings)
+        .values({
+          name: data.name,
+          address: data.address,
+          adminId: adminId ?? null,
+        })
+        .returning();
+
+      const createdApartments =
+        apartmentNumbers.length > 0
+          ? await tx
+              .insert(apartments)
+              .values(
+                apartmentNumbers.map((number) => ({
+                  buildingId: building!.id,
+                  number,
+                })),
+              )
+              .returning({ id: apartments.id, number: apartments.number })
+          : [];
+
+      return {
+        ...building!,
+        apartments: sortApartments(createdApartments),
+      };
+    });
   }
 
   async update(id: string, data: UpdateBuilding) {
@@ -66,6 +92,10 @@ export class BuildingsService {
       .returning({ id: buildings.id });
     if (!row) notFound(id);
   }
+}
+
+function sortApartments(rows: { id: string; number: string }[]) {
+  return rows.sort((a, b) => a.number.localeCompare(b.number, 'pl', { numeric: true }));
 }
 
 function notFound(id: string): never {

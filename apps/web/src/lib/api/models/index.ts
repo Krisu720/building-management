@@ -7,9 +7,11 @@
 
 export * from './apartment';
 export * from './apartmentsFindAllParams';
+export * from './assignResidentApartment';
 export * from './building';
 export * from './buildingApartment';
 export * from './buildingWithApartments';
+export * from './createBuilding';
 export * from './createInspection';
 export * from './createInspectionScope';
 export * from './createIssue';

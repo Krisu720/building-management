@@ -26,8 +26,10 @@ import type {
 import type {
   Apartment,
   ApartmentsFindAllParams,
+  AssignResidentApartment,
   Building,
   BuildingWithApartments,
+  CreateBuilding,
   CreateInspection,
   CreateIssue,
   ErrorResponse,
@@ -174,6 +176,74 @@ export function useBuildingsFindAll<TData = Awaited<ReturnType<typeof buildingsF
 
 
 
+
+export const getBuildingsCreateUrl = () => {
+
+
+
+
+  return `/api/buildings`
+}
+
+export const buildingsCreate = async (createBuilding: CreateBuilding, options?: Parameters<typeof apiFetch>[1]): Promise<BuildingWithApartments> => {
+
+  return apiFetch<BuildingWithApartments>(getBuildingsCreateUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
+    body: JSON.stringify(createBuilding)
+  }
+);}
+
+
+
+
+
+export const getBuildingsCreateMutationKey = () => ['buildingsCreate'] as const;
+
+export const getBuildingsCreateMutationOptions = <TError = ErrorType<ErrorResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof buildingsCreate>>, TError,BuildingsCreateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof buildingsCreate>>, TError,BuildingsCreateMutationVariables, TContext> => {
+
+const mutationKey = getBuildingsCreateMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof buildingsCreate>>, BuildingsCreateMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  buildingsCreate(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BuildingsCreateMutationResult = NonNullable<Awaited<ReturnType<typeof buildingsCreate>>>
+    export type BuildingsCreateMutationBody = CreateBuilding
+    export type BuildingsCreateMutationError = ErrorType<ErrorResponse | void>
+    export type BuildingsCreateMutationVariables = {data: CreateBuilding}
+
+    export const useBuildingsCreate = <TError = ErrorType<ErrorResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof buildingsCreate>>, TError,BuildingsCreateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof buildingsCreate>>,
+        TError,
+        BuildingsCreateMutationVariables,
+        TContext
+      > => {
+      return useMutation(getBuildingsCreateMutationOptions(options), queryClient);
+    }
 
 export const getBuildingsFindAllWithApartmentsUrl = () => {
 
@@ -719,6 +789,75 @@ export function useResidentsFindAll<TData = Awaited<ReturnType<typeof residentsF
 
 
 
+
+export const getResidentsAssignApartmentUrl = (id: string,) => {
+
+
+
+
+  return `/api/residents/${id}/apartment`
+}
+
+export const residentsAssignApartment = async (id: string,
+    assignResidentApartment: AssignResidentApartment, options?: Parameters<typeof apiFetch>[1]): Promise<ResidentListItem> => {
+
+  return apiFetch<ResidentListItem>(getResidentsAssignApartmentUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
+    body: JSON.stringify(assignResidentApartment)
+  }
+);}
+
+
+
+
+
+export const getResidentsAssignApartmentMutationKey = () => ['residentsAssignApartment'] as const;
+
+export const getResidentsAssignApartmentMutationOptions = <TError = ErrorType<ErrorResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof residentsAssignApartment>>, TError,ResidentsAssignApartmentMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof residentsAssignApartment>>, TError,ResidentsAssignApartmentMutationVariables, TContext> => {
+
+const mutationKey = getResidentsAssignApartmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof residentsAssignApartment>>, ResidentsAssignApartmentMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  residentsAssignApartment(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResidentsAssignApartmentMutationResult = NonNullable<Awaited<ReturnType<typeof residentsAssignApartment>>>
+    export type ResidentsAssignApartmentMutationBody = AssignResidentApartment
+    export type ResidentsAssignApartmentMutationError = ErrorType<ErrorResponse | void>
+    export type ResidentsAssignApartmentMutationVariables = {id: string;data: AssignResidentApartment}
+
+    export const useResidentsAssignApartment = <TError = ErrorType<ErrorResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof residentsAssignApartment>>, TError,ResidentsAssignApartmentMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof residentsAssignApartment>>,
+        TError,
+        ResidentsAssignApartmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResidentsAssignApartmentMutationOptions(options), queryClient);
+    }
 
 export const getUsersFindAllUrl = (params?: UsersFindAllParams,) => {
   const normalizedParams = new URLSearchParams();

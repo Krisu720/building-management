@@ -142,7 +142,10 @@ function ResidentsTable({
                 <td className="wrap-break-word py-4">{resident.email}</td>
                 <td className="wrap-break-word py-4">
                   {resident.apartmentNumber === null ? (
-                    <ResidentAssignment residentName={resident.name} />
+                    <ResidentAssignment
+                      residentId={resident.id}
+                      residentName={resident.name}
+                    />
                   ) : (
                     <>
                       <span className="block font-medium text-[#263448]">

@@ -1,8 +1,17 @@
-import { ResidentListItemSchema, ROLES } from '@building-management/contracts';
-import { Controller, Get } from '@nestjs/common';
 import {
+  AssignResidentApartmentSchema,
+  ErrorResponseSchema,
+  ResidentIdSchema,
+  ResidentListItemSchema,
+  ROLES,
+  type AssignResidentApartment,
+} from '@building-management/contracts';
+import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
   ApiCookieAuth,
   ApiForbiddenResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse,
@@ -23,5 +32,17 @@ export class ResidentsController {
   @ApiOkResponse({ standardSchema: ResidentListItemSchema, isArray: true })
   findAll() {
     return this.residentsService.findAll();
+  }
+
+  @Patch(':id/apartment')
+  @Roles([ROLES.ADMIN])
+  @ApiOkResponse({ standardSchema: ResidentListItemSchema })
+  @ApiBadRequestResponse({ description: 'Niepoprawne dane wejściowe', standardSchema: ErrorResponseSchema })
+  @ApiNotFoundResponse({ description: 'Mieszkaniec nie istnieje', standardSchema: ErrorResponseSchema })
+  assignApartment(
+    @Param('id', { schema: ResidentIdSchema }) id: string,
+    @Body({ schema: AssignResidentApartmentSchema }) body: AssignResidentApartment,
+  ) {
+    return this.residentsService.assignApartment(id, body.apartmentId);
   }
 }

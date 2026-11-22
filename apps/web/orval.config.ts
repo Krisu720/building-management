@@ -6,6 +6,7 @@ export default defineConfig({
       target: '../server/openapi.json',
       filters: {
         operationIds: [
+          'Buildings_create',
           'Buildings_findAll',
           'Buildings_findAllWithApartments',
           'Apartments_findAll',
@@ -13,6 +14,7 @@ export default defineConfig({
           'Issues_findAll',
           'Issues_findMine',
           'Residents_findAll',
+          'Residents_assignApartment',
           'Users_findAll',
           'Inspections_create',
           'Inspections_findAll',

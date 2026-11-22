@@ -1,7 +1,8 @@
 'use client';
 
 import { Popover } from '@base-ui/react/popover';
-import { KeyRound } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { KeyRound, LoaderCircle } from 'lucide-react';
 import { useId, useState } from 'react';
 import {
   Combobox,
@@ -11,16 +12,29 @@ import {
   ComboboxList,
 } from '@/components/ui/combobox';
 import { getApiErrorMessage } from '@/lib/api/fetch';
-import { useBuildingsFindAllWithApartments } from '@/lib/api/generated';
+import {
+  getResidentsFindAllQueryKey,
+  useBuildingsFindAllWithApartments,
+  useResidentsAssignApartment,
+} from '@/lib/api/generated';
+import type { ResidentListItem } from '@/lib/api/models';
 
 const actionClassName =
   'inline-flex min-h-9 items-center gap-2 rounded-md border border-[#dfe5ed] bg-white px-3 text-sm font-medium text-[#344054] enabled:hover:bg-[#f6f8fb] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6ea8ff] disabled:opacity-50';
 
 type LocationOption = { id: string; label: string };
 
-export function ResidentAssignment({ residentName }: { residentName: string }) {
+export function ResidentAssignment({
+  residentId,
+  residentName,
+}: {
+  residentId: string;
+  residentName: string;
+}) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <Popover.Root>
+    <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger
         type="button"
         aria-label={'Przypisz mieszkanie: ' + residentName}
@@ -39,7 +53,10 @@ export function ResidentAssignment({ residentName }: { residentName: string }) {
             <Popover.Title className="mb-3 text-sm font-semibold text-[#263448]">
               Przypisz mieszkanie
             </Popover.Title>
-            <AssignmentFields />
+            <AssignmentFields
+              residentId={residentId}
+              onClose={() => setOpen(false)}
+            />
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>
@@ -47,11 +64,20 @@ export function ResidentAssignment({ residentName }: { residentName: string }) {
   );
 }
 
-function AssignmentFields() {
+function AssignmentFields({
+  residentId,
+  onClose,
+}: {
+  residentId: string;
+  onClose: () => void;
+}) {
   const id = useId();
+  const queryClient = useQueryClient();
   const query = useBuildingsFindAllWithApartments();
+  const assignApartment = useResidentsAssignApartment();
   const [buildingId, setBuildingId] = useState<string | null>(null);
   const [apartmentId, setApartmentId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const buildings = query.data ?? [];
   const selectedBuilding = buildings.find(
@@ -67,9 +93,32 @@ function AssignmentFields() {
       label: 'Mieszkanie ' + number,
     }),
   );
+  const isSaving = assignApartment.isPending;
+
+  async function saveAssignment() {
+    if (!apartmentId || isSaving) return;
+    setErrorMessage(null);
+    try {
+      const updated = await assignApartment.mutateAsync({
+        id: residentId,
+        data: { apartmentId },
+      });
+      queryClient.setQueryData<ResidentListItem[]>(
+        getResidentsFindAllQueryKey(),
+        (current) =>
+          current?.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      void queryClient.invalidateQueries({
+        queryKey: getResidentsFindAllQueryKey(),
+      });
+      onClose();
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error));
+    }
+  }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" aria-busy={isSaving}>
       {query.isPending ? (
         <p role="status">Ładowanie budynków…</p>
       ) : query.isError ? (
@@ -96,9 +145,11 @@ function AssignmentFields() {
             }
             options={buildingOptions}
             selectedId={buildingId}
-            onSelect={(id) => {
-              setBuildingId(id);
+            disabled={isSaving}
+            onSelect={(nextBuildingId) => {
+              setBuildingId(nextBuildingId);
               setApartmentId(null);
+              setErrorMessage(null);
             }}
           />
           <LocationCombobox
@@ -114,19 +165,44 @@ function AssignmentFields() {
             }
             options={apartmentOptions}
             selectedId={apartmentId}
-            onSelect={setApartmentId}
+            disabled={isSaving}
+            onSelect={(nextApartmentId) => {
+              setApartmentId(nextApartmentId);
+              setErrorMessage(null);
+            }}
           />
         </>
+      )}
+      {errorMessage && (
+        <p role="alert" className="text-xs text-[#a03830]">
+          {errorMessage}
+        </p>
       )}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          disabled
-          className="min-h-9 rounded-md bg-[#0866f5] px-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!apartmentId || isSaving || query.isPending || query.isError}
+          onClick={() => void saveAssignment()}
+          className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-[#0866f5] px-3 text-sm font-medium text-white enabled:hover:bg-[#0057dc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6ea8ff] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Zapisz przypisanie
+          {isSaving ? (
+            <>
+              <LoaderCircle
+                size={15}
+                className="animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+              Zapisywanie…
+            </>
+          ) : (
+            'Zapisz przypisanie'
+          )}
         </button>
-        <Popover.Close type="button" className={actionClassName}>
+        <Popover.Close
+          type="button"
+          disabled={isSaving}
+          className={actionClassName}
+        >
           Anuluj
         </Popover.Close>
       </div>
@@ -140,6 +216,7 @@ function LocationCombobox({
   placeholder,
   options,
   selectedId,
+  disabled = false,
   onSelect,
 }: {
   id: string;
@@ -147,8 +224,11 @@ function LocationCombobox({
   placeholder: string;
   options: LocationOption[];
   selectedId: string | null;
+  disabled?: boolean;
   onSelect: (id: string | null) => void;
 }) {
+  const isDisabled = disabled || !options.length;
+
   return (
     <div className="space-y-1">
       <label htmlFor={id} className="block font-medium text-[#344054]">
@@ -160,14 +240,14 @@ function LocationCombobox({
         itemToStringValue={(option) => option.label}
         isItemEqualToValue={(option, selected) => option.id === selected.id}
         onValueChange={(option) => onSelect(option?.id ?? null)}
-        disabled={!options.length}
+        disabled={isDisabled}
         openOnInputClick
       >
         <ComboboxInput
           id={id}
           className="h-9 w-full rounded-md border-[#dfe5ed] bg-white"
           placeholder={placeholder}
-          disabled={!options.length}
+          disabled={isDisabled}
         />
         <ComboboxContent className="min-w-0 motion-reduce:animate-none">
           <ComboboxList>

@@ -68,7 +68,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Building"
+                  "$ref": "#/components/schemas/BuildingWithApartments"
                 }
               }
             }
@@ -534,6 +534,78 @@
         ]
       }
     },
+    "/api/residents/{id}/apartment": {
+      "patch": {
+        "operationId": "Residents_assignApartment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignResidentApartment"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResidentListItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Niepoprawne dane wejściowe",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Brak sesji"
+          },
+          "403": {
+            "description": "Brak uprawnień"
+          },
+          "404": {
+            "description": "Mieszkaniec nie istnieje",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "residents"
+        ]
+      }
+    },
     "/api/users": {
       "get": {
         "operationId": "Users_findAll",
@@ -881,6 +953,14 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 500
+          },
+          "apartments": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            }
           }
         },
         "required": [
@@ -1219,6 +1299,20 @@
           "createdAt"
         ],
         "additionalProperties": false
+      },
+      "AssignResidentApartment": {
+        "type": "object",
+        "properties": {
+          "apartmentId": {
+            "nullable": true,
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "apartmentId"
+        ]
       },
       "ListUsersQuery": {
         "type": "object",

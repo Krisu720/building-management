@@ -10,14 +10,34 @@ export const BuildingSchema = createSelectSchema(buildings, {
   updatedAt: z.iso.datetime(),
 }).meta({ id: 'Building' });
 
-export const CreateBuildingSchema = createInsertSchema(buildings, {
+const BuildingBaseSchema = createInsertSchema(buildings, {
   name: (s) => s.trim().min(1).max(200),
   address: (s) => s.trim().min(1).max(500),
-})
-  .pick({ name: true, address: true })
-  .meta({ id: 'CreateBuilding' });
+}).pick({ name: true, address: true });
 
-export const UpdateBuildingSchema = CreateBuildingSchema.partial()
+export const ApartmentNumberSchema = z.string().trim().min(1).max(50);
+
+export const CreateBuildingSchema = BuildingBaseSchema.extend({
+  apartments: z
+    .array(ApartmentNumberSchema)
+    .superRefine((numbers, ctx) => {
+      const seen = new Set<string>();
+      for (const [index, number] of numbers.entries()) {
+        const normalized = number.toLocaleLowerCase('pl-PL');
+        if (seen.has(normalized)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [index],
+            message: `Numer mieszkania „${number}” powtarza się.`,
+          });
+        }
+        seen.add(normalized);
+      }
+    })
+    .optional(),
+}).meta({ id: 'CreateBuilding' });
+
+export const UpdateBuildingSchema = BuildingBaseSchema.partial()
   .refine((value) => Object.keys(value).length > 0, {
     message: 'Podaj przynajmniej jedno pole do zmiany',
   })
