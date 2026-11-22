@@ -7,10 +7,16 @@ export default defineConfig({
       filters: {
         operationIds: [
           'Buildings_findAll',
+          'Buildings_findAllWithApartments',
           'Apartments_findAll',
           'Issues_create',
           'Issues_findAll',
           'Issues_findMine',
+          'Residents_findAll',
+          'Users_findAll',
+          'Inspections_create',
+          'Inspections_findAll',
+          'Inspections_findMine',
         ],
       },
     },

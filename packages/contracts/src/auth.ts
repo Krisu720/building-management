@@ -6,6 +6,7 @@ export const statements = {
   building: ['create', 'read', 'update', 'delete'],
   apartment: ['create', 'read', 'update', 'delete'],
   issue: ['create', 'read', 'update', 'delete'],
+  inspection: ['create', 'read', 'update', 'delete'],
 } as const;
 
 export const ac = createAccessControl(statements);
@@ -24,16 +25,19 @@ export const roles = {
     building: ['create', 'read', 'update', 'delete'],
     apartment: ['create', 'read', 'update', 'delete'],
     issue: ['create', 'read', 'update', 'delete'],
+    inspection: ['create', 'read', 'update', 'delete'],
   }),
   [ROLES.USER]: ac.newRole({
     building: ['read'],
     apartment: ['read'],
     issue: ['create', 'read'],
+    inspection: ['read'],
   }),
   [ROLES.TECHNICIAN]: ac.newRole({
     building: ['read', 'update'],
     apartment: ['read'],
     issue: ['read', 'update'],
+    inspection: ['read', 'update'],
   }),
 };
 

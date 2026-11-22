@@ -22,6 +22,13 @@
       "when": 1794854142653,
       "tag": "0002_domain",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795358806620,
+      "tag": "0003_inspection_type_label",
+      "breakpoints": true
     }
   ]
 }

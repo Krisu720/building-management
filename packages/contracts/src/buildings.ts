@@ -23,6 +23,19 @@ export const UpdateBuildingSchema = CreateBuildingSchema.partial()
   })
   .meta({ id: 'UpdateBuilding' });
 
+export const BuildingApartmentSchema = z
+  .object({
+    id: z.uuid(),
+    number: z.string(),
+  })
+  .meta({ id: 'BuildingApartment' });
+
+export const BuildingWithApartmentsSchema = BuildingSchema.extend({
+  apartments: z.array(BuildingApartmentSchema),
+}).meta({ id: 'BuildingWithApartments' });
+
 export type Building = z.infer<typeof BuildingSchema>;
 export type CreateBuilding = z.infer<typeof CreateBuildingSchema>;
 export type UpdateBuilding = z.infer<typeof UpdateBuildingSchema>;
+export type BuildingApartment = z.infer<typeof BuildingApartmentSchema>;
+export type BuildingWithApartments = z.infer<typeof BuildingWithApartmentsSchema>;

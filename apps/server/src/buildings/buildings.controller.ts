@@ -1,6 +1,7 @@
 import {
   BuildingIdSchema,
   BuildingSchema,
+  BuildingWithApartmentsSchema,
   CreateBuildingSchema,
   ErrorResponseSchema,
   UpdateBuildingSchema,
@@ -42,6 +43,13 @@ export class BuildingsController {
   @ApiOkResponse({ standardSchema: BuildingSchema, isArray: true })
   findAll() {
     return this.buildingsService.findAll();
+  }
+
+  @Get('with-apartments')
+  @UserHasPermission({ permission: { building: ['read'], apartment: ['read'] } })
+  @ApiOkResponse({ standardSchema: BuildingWithApartmentsSchema, isArray: true })
+  findAllWithApartments() {
+    return this.buildingsService.findAllWithApartments();
   }
 
   @Get(':id')

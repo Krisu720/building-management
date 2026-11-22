@@ -1,4 +1,4 @@
-import { buildings, type Database } from '@building-management/db';
+import { apartments, buildings, type Database } from '@building-management/db';
 import type { CreateBuilding, UpdateBuilding } from '@building-management/contracts';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDrizzle } from '@nestjs/drizzle';
@@ -10,6 +10,34 @@ export class BuildingsService {
 
   findAll() {
     return this.db.select().from(buildings).orderBy(asc(buildings.name));
+  }
+
+  async findAllWithApartments() {
+    const [buildingRows, apartmentRows] = await Promise.all([
+      this.db.select().from(buildings).orderBy(asc(buildings.name)),
+      this.db
+        .select({
+          id: apartments.id,
+          buildingId: apartments.buildingId,
+          number: apartments.number,
+        })
+        .from(apartments)
+        .orderBy(asc(apartments.number)),
+    ]);
+
+    const apartmentsByBuilding = new Map<string, { id: string; number: string }[]>();
+    for (const apartment of apartmentRows) {
+      const list = apartmentsByBuilding.get(apartment.buildingId) ?? [];
+      list.push({ id: apartment.id, number: apartment.number });
+      apartmentsByBuilding.set(apartment.buildingId, list);
+    }
+
+    return buildingRows.map((building) => ({
+      ...building,
+      apartments: (apartmentsByBuilding.get(building.id) ?? []).sort((a, b) =>
+        a.number.localeCompare(b.number, 'pl', { numeric: true }),
+      ),
+    }));
   }
 
   async findOne(id: string) {

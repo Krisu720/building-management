@@ -3,12 +3,10 @@
 import { Building2, ChevronRight, House } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useAccount } from '@/components/account/account-shell';
-import type { Apartment, Building } from '@/lib/api/models';
+import { getApiErrorMessage } from '@/lib/api/fetch';
+import { useBuildingsFindAllWithApartments } from '@/lib/api/generated';
+import type { BuildingWithApartments } from '@/lib/api/models';
 import { isAdmin } from '@/lib/user-display';
-
-type BuildingRow = Pick<Building, 'id' | 'name' | 'address' | 'createdAt'> & {
-  apartments: readonly Pick<Apartment, 'id' | 'number'>[];
-};
 
 const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
   dateStyle: 'medium',
@@ -17,6 +15,7 @@ const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
 
 export function BuildingsView() {
   const { user } = useAccount();
+  const administrator = isAdmin(user.role);
 
   return (
     <div className="mx-auto max-w-[1360px] px-7 pb-5 pt-7 max-[1100px]:px-8 max-[800px]:px-5 max-[560px]:px-4">
@@ -28,8 +27,8 @@ export function BuildingsView() {
           Budynki i przypisane do nich mieszkania.
         </p>
       </header>
-      {isAdmin(user.role) ? (
-        <BuildingsTable buildings={[]} />
+      {administrator ? (
+        <BuildingsSection />
       ) : (
         <p className="text-sm text-[#526077]">
           Ta strona jest dostępna dla administratora.
@@ -39,7 +38,10 @@ export function BuildingsView() {
   );
 }
 
-function BuildingsTable({ buildings }: { buildings: readonly BuildingRow[] }) {
+function BuildingsSection() {
+  const query = useBuildingsFindAllWithApartments({ query: { staleTime: 0 } });
+  const buildings = query.data ?? [];
+
   return (
     <section
       aria-labelledby="buildings-list"
@@ -59,47 +61,80 @@ function BuildingsTable({ buildings }: { buildings: readonly BuildingRow[] }) {
           Lista budynków
         </h2>
       </header>
-      <div
-        role="region"
-        aria-labelledby="buildings-list"
-        tabIndex={0}
-        className="overflow-x-auto focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#6ea8ff]"
-      >
-        <table className="w-full min-w-[580px] table-fixed text-sm [&_:is(th,td)]:px-6 max-[560px]:[&_:is(th,td)]:px-4">
-          <thead className="bg-[#fcfcfd] text-left text-[#475569] [&_th]:py-3 [&_th]:font-medium">
-            <tr>
-              <th scope="col" className="w-[30%]">
-                Nazwa budynku
-              </th>
-              <th scope="col" className="w-[34%]">
-                Adres
-              </th>
-              <th scope="col" className="w-[16%]">
-                Mieszkania
-              </th>
-              <th scope="col">Data dodania</th>
-            </tr>
-          </thead>
-          <tbody className="border-t border-[#edf0f5] text-[#526077]">
-            {buildings.length ? (
-              buildings.map((building) => (
-                <BuildingTableRow key={building.id} building={building} />
-              ))
-            ) : (
-              <tr>
-                <td colSpan={4} className="py-10 text-center">
-                  Brak budynków do wyświetlenia.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {query.isPending ? (
+        <p
+          role="status"
+          className="px-6 py-12 text-center text-[14px] text-[#8792a2]"
+        >
+          Ładowanie budynków…
+        </p>
+      ) : query.isError ? (
+        <div role="alert" className="px-6 py-10 text-center">
+          <p className="text-[14px] text-[#a03830]">
+            {getApiErrorMessage(query.error)}
+          </p>
+          <button
+            type="button"
+            disabled={query.isFetching}
+            onClick={() => void query.refetch()}
+            className="mt-4 rounded-md border border-[#dfe5ed] px-4 py-2 text-[14px] text-[#526077] transition-colors duration-150 enabled:hover:bg-[#f6f8fb] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6ea8ff]"
+          >
+            {query.isFetching ? 'Ładowanie…' : 'Spróbuj ponownie'}
+          </button>
+        </div>
+      ) : (
+        <BuildingsTable buildings={buildings} />
+      )}
     </section>
   );
 }
 
-function BuildingTableRow({ building }: { building: BuildingRow }) {
+function BuildingsTable({
+  buildings,
+}: {
+  buildings: readonly BuildingWithApartments[];
+}) {
+  return (
+    <div
+      role="region"
+      aria-labelledby="buildings-list"
+      tabIndex={0}
+      className="overflow-x-auto focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#6ea8ff]"
+    >
+      <table className="w-full min-w-[580px] table-fixed text-sm [&_:is(th,td)]:px-6 max-[560px]:[&_:is(th,td)]:px-4">
+        <thead className="bg-[#fcfcfd] text-left text-[#475569] [&_th]:py-3 [&_th]:font-medium">
+          <tr>
+            <th scope="col" className="w-[30%]">
+              Nazwa budynku
+            </th>
+            <th scope="col" className="w-[34%]">
+              Adres
+            </th>
+            <th scope="col" className="w-[16%]">
+              Mieszkania
+            </th>
+            <th scope="col">Data dodania</th>
+          </tr>
+        </thead>
+        <tbody className="border-t border-[#edf0f5] text-[#526077]">
+          {buildings.length ? (
+            buildings.map((building) => (
+              <BuildingTableRow key={building.id} building={building} />
+            ))
+          ) : (
+            <tr>
+              <td colSpan={4} className="py-10 text-center">
+                Brak budynków do wyświetlenia.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function BuildingTableRow({ building }: { building: BuildingWithApartments }) {
   const [expanded, setExpanded] = useState(false);
   const apartmentsId = useId();
   const { apartments } = building;
