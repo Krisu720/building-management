@@ -382,7 +382,7 @@ export function MaintenanceRequestForm() {
 
               <div>
                 <label className={labelClassName} htmlFor={id + '-title'}>
-                  Temat usterki
+                  Rodzaj usterki
                   <RequiredMark />
                 </label>
                 <input

@@ -11,6 +11,7 @@ import {
 } from 'react';
 import {
   Building2,
+  CalendarPlus,
   ChevronRight,
   ClipboardList,
   House,
@@ -45,10 +46,26 @@ export function useAccount() {
 
 const accountNavigation = [
   { href: '/', label: 'Panel główny', icon: LayoutDashboard },
-  { href: '/buildings', label: 'Budynki', icon: Building2 },
-  { href: '/residents', label: 'Mieszkańcy', icon: UsersRound },
+  { href: '/buildings', label: 'Budynki', icon: Building2, audience: 'admin' },
+  {
+    href: '/residents',
+    label: 'Mieszkańcy',
+    icon: UsersRound,
+    audience: 'admin',
+  },
   { href: '/requests', label: 'Zgłoszenia', icon: ClipboardList },
-  { href: '/my-requests', label: 'Moje zgłoszenia', icon: ClipboardList },
+  {
+    href: '/my-requests',
+    label: 'Moje zgłoszenia',
+    icon: ClipboardList,
+    audience: 'resident',
+  },
+  {
+    href: '/inspections/new',
+    label: 'Zgłoś przegląd techniczny',
+    icon: CalendarPlus,
+    audience: 'admin',
+  },
   { href: '/inspections', label: 'Przeglądy techniczne', icon: Wrench },
 ];
 
@@ -124,10 +141,9 @@ export function AccountShell({ children }: { children: ReactNode }) {
     ? 'Panel administracyjny'
     : 'Panel użytkownika';
   const initials = getInitials(session.user.name);
-  const navigation = accountNavigation.filter(({ href }) =>
-    administrator
-      ? href !== '/my-requests'
-      : !['/buildings', '/residents'].includes(href),
+  const navigation = accountNavigation.filter(
+    ({ audience }) =>
+      !audience || audience === (administrator ? 'admin' : 'resident'),
   );
 
   return (

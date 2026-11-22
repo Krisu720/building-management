@@ -2,6 +2,7 @@
 
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
 import {
   ArrowRight,
   Building2,
@@ -121,45 +122,58 @@ export function InspectionsView() {
   const administrator = isAdmin(user.role);
 
   return (
-    <div className="mx-auto max-w-[1360px] px-7 pb-5 pt-7 max-[1100px]:px-8 max-[800px]:px-5 max-[560px]:px-4">
-      <header className="mb-6">
-        <h1 className="text-[29px] font-medium leading-[1.3] tracking-[-0.65px] text-[#1c2738] max-[560px]:text-[27px]">
-          Przeglądy techniczne
-        </h1>
-        <p className="mt-2 text-[14px] leading-[1.7] text-[#7a8799]">
-          {administrator
-            ? 'Planuj przeglądy części wspólnych i mieszkań.'
-            : 'Terminy przeglądów dotyczących Twojego budynku i mieszkania.'}
-        </p>
-      </header>
-      {administrator ? (
-        <AdminInspectionsSection />
-      ) : (
-        <InspectionsListSection personal />
-      )}
-    </div>
+    <InspectionsPage
+      title="Przeglądy techniczne"
+      description={
+        administrator
+          ? 'Lista przeglądów części wspólnych i mieszkań.'
+          : 'Terminy przeglądów dotyczących Twojego budynku i mieszkania.'
+      }
+    >
+      <InspectionsListSection personal={!administrator} />
+    </InspectionsPage>
   );
 }
 
-function AdminInspectionsSection() {
-  const buildingsQuery = useBuildingsFindAllWithApartments();
-  const usersQuery = useUsersFindAll({ role: 'technician' });
+export function ReportInspectionView() {
+  const { user } = useAccount();
 
   return (
-    <div className="space-y-6">
-      <InspectionForm
-        buildings={buildingsQuery.data ?? emptyBuildings}
-        buildingsLoading={buildingsQuery.isPending}
-        buildingsError={buildingsQuery.isError ? buildingsQuery.error : null}
-        onRetryBuildings={() => void buildingsQuery.refetch()}
-        buildingsFetching={buildingsQuery.isFetching}
-        users={usersQuery.data ?? emptyUsers}
-        usersLoading={usersQuery.isPending}
-        usersError={usersQuery.isError ? usersQuery.error : null}
-        onRetryUsers={() => void usersQuery.refetch()}
-        usersFetching={usersQuery.isFetching}
-      />
-      <InspectionsListSection personal={false} />
+    <InspectionsPage
+      title="Zgłoś przegląd techniczny"
+      description="Zaplanuj przegląd części wspólnej lub wybranych mieszkań."
+    >
+      {isAdmin(user.role) ? (
+        <InspectionForm />
+      ) : (
+        <p className="text-sm text-[#526077]">
+          Przeglądy może planować administrator.
+        </p>
+      )}
+    </InspectionsPage>
+  );
+}
+
+function InspectionsPage({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="mx-auto max-w-[1360px] px-7 pb-5 pt-7 max-[1100px]:px-8 max-[800px]:px-5 max-[560px]:px-4">
+      <header className="mb-6">
+        <h1 className="text-[29px] font-medium leading-[1.3] tracking-[-0.65px] text-[#1c2738] max-[560px]:text-[27px]">
+          {title}
+        </h1>
+        <p className="mt-2 text-[14px] leading-[1.7] text-[#7a8799]">
+          {description}
+        </p>
+      </header>
+      {children}
     </div>
   );
 }
@@ -239,7 +253,8 @@ function InspectionsListSection({ personal }: { personal: boolean }) {
                     <div className="min-w-0">
                       <dt className="text-[#8792a2]">Lokalizacja</dt>
                       <dd className="mt-1 wrap-break-word leading-relaxed text-[#526077]">
-                        {inspection.building.name} — {inspection.building.address}
+                        {inspection.building.name} —{' '}
+                        {inspection.building.address}
                         <span className="block">
                           {inspection.apartment
                             ? 'Mieszkanie ' + inspection.apartment.number
@@ -251,7 +266,9 @@ function InspectionsListSection({ personal }: { personal: boolean }) {
                       <dt className="text-[#8792a2]">Termin</dt>
                       <dd className="mt-1 text-[#526077]">
                         <time dateTime={inspection.scheduledAt}>
-                          {dateFormatter.format(new Date(inspection.scheduledAt))}
+                          {dateFormatter.format(
+                            new Date(inspection.scheduledAt),
+                          )}
                         </time>
                       </dd>
                     </div>
@@ -313,29 +330,11 @@ function InspectionField({
   );
 }
 
-function InspectionForm({
-  buildings,
-  buildingsLoading,
-  buildingsError,
-  onRetryBuildings,
-  buildingsFetching,
-  users,
-  usersLoading,
-  usersError,
-  onRetryUsers,
-  usersFetching,
-}: {
-  buildings: readonly InspectionBuilding[];
-  buildingsLoading: boolean;
-  buildingsError: unknown;
-  onRetryBuildings: () => void;
-  buildingsFetching: boolean;
-  users: readonly InspectionUser[];
-  usersLoading: boolean;
-  usersError: unknown;
-  onRetryUsers: () => void;
-  usersFetching: boolean;
-}) {
+function InspectionForm() {
+  const buildingsQuery = useBuildingsFindAllWithApartments();
+  const usersQuery = useUsersFindAll({ role: 'technician' });
+  const buildings = buildingsQuery.data ?? emptyBuildings;
+  const technicians = getInspectionTechnicians(usersQuery.data ?? emptyUsers);
   const id = useId();
   const queryClient = useQueryClient();
   const createInspection = useInspectionsCreate();
@@ -343,7 +342,6 @@ function InspectionForm({
   const [confirmation, setConfirmation] =
     useState<InspectionConfirmation | null>(null);
   const confirmationRef = useRef<HTMLDivElement>(null);
-  const technicians = getInspectionTechnicians(users);
   const {
     control,
     register,
@@ -567,15 +565,17 @@ function InspectionForm({
                     errors.buildingId ? id + '-building-error' : undefined
                   }
                   disabled={
-                    buildingsLoading || !!buildingsError || !buildings.length
+                    buildingsQuery.isPending ||
+                    buildingsQuery.isError ||
+                    !buildings.length
                   }
                   required
                   {...register('buildingId', { onChange: clearApartments })}
                 >
                   <option value="">
-                    {buildingsLoading
+                    {buildingsQuery.isPending
                       ? 'Ładowanie budynków…'
-                      : buildingsError
+                      : buildingsQuery.isError
                         ? 'Nie udało się pobrać budynków'
                         : buildings.length
                           ? 'Wybierz budynek'
@@ -587,13 +587,13 @@ function InspectionForm({
                     </option>
                   ))}
                 </InspectionSelect>
-                {!!buildingsError && (
+                {buildingsQuery.isError && (
                   <p className="text-xs text-[#a03830]">
-                    {getApiErrorMessage(buildingsError)}{' '}
+                    {getApiErrorMessage(buildingsQuery.error)}{' '}
                     <button
                       type="button"
-                      disabled={buildingsFetching}
-                      onClick={onRetryBuildings}
+                      disabled={buildingsQuery.isFetching}
+                      onClick={() => void buildingsQuery.refetch()}
                       className="font-medium text-[#0866f5] underline underline-offset-2 disabled:opacity-50"
                     >
                       Spróbuj ponownie
@@ -706,13 +706,17 @@ function InspectionForm({
                   aria-describedby={
                     errors.technicianId ? id + '-technician-error' : undefined
                   }
-                  disabled={usersLoading || !!usersError || !technicians.length}
+                  disabled={
+                    usersQuery.isPending ||
+                    usersQuery.isError ||
+                    !technicians.length
+                  }
                   {...register('technicianId')}
                 >
                   <option value="">
-                    {usersLoading
+                    {usersQuery.isPending
                       ? 'Ładowanie techników…'
-                      : usersError
+                      : usersQuery.isError
                         ? 'Nie udało się pobrać techników'
                         : technicians.length
                           ? 'Bez przypisania'
@@ -724,13 +728,13 @@ function InspectionForm({
                     </option>
                   ))}
                 </InspectionSelect>
-                {!!usersError && (
+                {usersQuery.isError && (
                   <p className="text-xs text-[#a03830]">
-                    {getApiErrorMessage(usersError)}{' '}
+                    {getApiErrorMessage(usersQuery.error)}{' '}
                     <button
                       type="button"
-                      disabled={usersFetching}
-                      onClick={onRetryUsers}
+                      disabled={usersQuery.isFetching}
+                      onClick={() => void usersQuery.refetch()}
                       className="font-medium text-[#0866f5] underline underline-offset-2 disabled:opacity-50"
                     >
                       Spróbuj ponownie
@@ -752,7 +756,9 @@ function InspectionForm({
             <div className="flex flex-wrap items-center gap-3 border-t border-[#edf0f5] pt-4">
               <button
                 type="submit"
-                disabled={isSending || !buildings.length || !!buildingsError}
+                disabled={
+                  isSending || !buildings.length || buildingsQuery.isError
+                }
                 className="inline-flex items-center justify-center gap-2 rounded-md bg-[#0866f5] px-4 py-2.5 text-sm font-medium text-white enabled:hover:bg-[#0057dc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6ea8ff] motion-safe:active:not-focus-visible:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSending ? (
@@ -807,6 +813,13 @@ function InspectionForm({
                   {dateFormatter.format(new Date(confirmation.scheduledAt))}
                 </time>
               </p>
+              <Link
+                href="/inspections"
+                className="mt-2 inline-flex items-center gap-1.5 font-medium text-[#0866f5] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6ea8ff]"
+              >
+                Zobacz listę przeglądów
+                <ArrowRight size={16} aria-hidden="true" />
+              </Link>
             </div>
           )}
         </form>

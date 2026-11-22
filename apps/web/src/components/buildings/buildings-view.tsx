@@ -1,12 +1,13 @@
 'use client';
 
-import { Building2, ChevronRight, House } from 'lucide-react';
-import { useId, useState } from 'react';
+import { Building2, ChevronRight, House, Plus } from 'lucide-react';
+import { useId, useRef, useState } from 'react';
 import { useAccount } from '@/components/account/account-shell';
 import { getApiErrorMessage } from '@/lib/api/fetch';
 import { useBuildingsFindAllWithApartments } from '@/lib/api/generated';
 import type { BuildingWithApartments } from '@/lib/api/models';
 import { isAdmin } from '@/lib/user-display';
+import { BuildingForm } from './building-form';
 
 const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
   dateStyle: 'medium',
@@ -16,19 +17,45 @@ const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
 export function BuildingsView() {
   const { user } = useAccount();
   const administrator = isAdmin(user.role);
+  const [formOpen, setFormOpen] = useState(false);
+  const formId = useId();
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+
+  function closeForm() {
+    setFormOpen(false);
+    addButtonRef.current?.focus();
+  }
 
   return (
     <div className="mx-auto max-w-[1360px] px-7 pb-5 pt-7 max-[1100px]:px-8 max-[800px]:px-5 max-[560px]:px-4">
-      <header className="mb-6">
-        <h1 className="text-[29px] font-medium leading-[1.3] tracking-[-0.65px] text-[#1c2738] max-[560px]:text-[27px]">
-          Budynki
-        </h1>
-        <p className="mt-2 text-[14px] leading-[1.7] text-[#7a8799]">
-          Budynki i przypisane do nich mieszkania.
-        </p>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-[29px] font-medium leading-[1.3] tracking-[-0.65px] text-[#1c2738] max-[560px]:text-[27px]">
+            Budynki
+          </h1>
+          <p className="mt-2 text-[14px] leading-[1.7] text-[#7a8799]">
+            Budynki i przypisane do nich mieszkania.
+          </p>
+        </div>
+        {administrator && (
+          <button
+            ref={addButtonRef}
+            type="button"
+            aria-expanded={formOpen}
+            aria-controls={formOpen ? formId : undefined}
+            onClick={() => setFormOpen(!formOpen)}
+            className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[#0866f5] px-4 text-sm font-medium text-white hover:bg-[#0057dc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6ea8ff]"
+          >
+            <Plus size={16} aria-hidden="true" />
+            Dodaj budynek
+          </button>
+        )}
       </header>
       {administrator ? (
-        <BuildingsSection />
+        <>
+          {formOpen && <BuildingForm id={formId} onClose={closeForm} />}
+          <BuildingsSection />
+        </>
       ) : (
         <p className="text-sm text-[#526077]">
           Ta strona jest dostępna dla administratora.
