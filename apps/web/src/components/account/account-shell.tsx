@@ -254,7 +254,7 @@ export function AccountShell({ children }: { children: ReactNode }) {
           </aside>
           <main
             id="admin-content"
-            className="max-w-none min-h-[100svh] m-[0_0_0_260px] p-0 outline-none max-[800px]:ml-0 max-[800px]:min-h-[calc(100svh_-_58px)]"
+            className="max-w-none min-h-[100svh] m-[0_0_0_260px] [html:has(&)]:[scrollbar-gutter:stable] p-0 outline-none max-[800px]:ml-0 max-[800px]:min-h-[calc(100svh_-_58px)]"
             tabIndex={-1}
             aria-label="Obszar roboczy panelu"
           >

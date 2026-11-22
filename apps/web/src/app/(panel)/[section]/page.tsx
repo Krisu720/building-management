@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 
-const sections = ['residents', 'inspections'];
+const sections = ['inspections'];
 
 export const dynamicParams = false;
 
