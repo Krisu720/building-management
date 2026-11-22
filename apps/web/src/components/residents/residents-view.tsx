@@ -6,6 +6,7 @@ import { getApiErrorMessage } from '@/lib/api/fetch';
 import { useResidentsFindAll } from '@/lib/api/generated';
 import type { ResidentListItem } from '@/lib/api/models';
 import { getInitials, isAdmin } from '@/lib/user-display';
+import { ResidentAssignment } from './resident-assignment';
 
 const headingCell = 'py-3 text-left font-medium text-[#475569]';
 const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
@@ -89,7 +90,11 @@ function ResidentsSection() {
   );
 }
 
-function ResidentsTable({ residents }: { residents: readonly ResidentListItem[] }) {
+function ResidentsTable({
+  residents,
+}: {
+  residents: readonly ResidentListItem[];
+}) {
   return (
     <div
       role="region"
@@ -137,7 +142,7 @@ function ResidentsTable({ residents }: { residents: readonly ResidentListItem[] 
                 <td className="wrap-break-word py-4">{resident.email}</td>
                 <td className="wrap-break-word py-4">
                   {resident.apartmentNumber === null ? (
-                    'Brak przypisanego mieszkania'
+                    <ResidentAssignment residentName={resident.name} />
                   ) : (
                     <>
                       <span className="block font-medium text-[#263448]">
