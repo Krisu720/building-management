@@ -82,7 +82,7 @@ test('mieszkaniec wysyła zgłoszenie usterki w mieszkaniu', async ({
 
   await expect(form.getByRole('radio', { name: 'Mieszkanie' })).toBeChecked();
   await form
-    .getByRole('textbox', { name: 'Temat usterki' })
+    .getByRole('textbox', { name: 'Rodzaj usterki' })
     .fill('Cieknący kran w kuchni');
 
   const apartment = form.getByRole('combobox', { name: 'Mieszkanie' });
@@ -165,7 +165,7 @@ test('mieszkaniec wysyła zgłoszenie usterki w części wspólnej', async ({
 
   await form.getByRole('radio', { name: 'Część wspólna' }).check();
   await form
-    .getByRole('textbox', { name: 'Temat usterki' })
+    .getByRole('textbox', { name: 'Rodzaj usterki' })
     .fill('Nie działa winda');
   await form
     .getByRole('combobox', { name: 'Budynek' })
@@ -202,8 +202,8 @@ test('mieszkaniec wysyła zgłoszenie usterki w części wspólnej', async ({
   await expect(
     page.getByRole('heading', { name: 'Szczegóły zgłoszenia' }),
   ).toBeVisible();
-  await expect(form.getByRole('textbox', { name: 'Temat usterki' })).toHaveValue('');
-  await expect(form.getByRole('textbox', { name: 'Temat usterki' })).toBeFocused();
+  await expect(form.getByRole('textbox', { name: 'Rodzaj usterki' })).toHaveValue('');
+  await expect(form.getByRole('textbox', { name: 'Rodzaj usterki' })).toBeFocused();
 });
 
 test('formularz pokazuje błędy walidacji przy pustych polach', async ({
@@ -222,7 +222,7 @@ test('formularz pokazuje błędy walidacji przy pustych polach', async ({
   await expect(form.getByText('Podaj miejsce usterki.')).toBeVisible();
   await expect(form.getByText('Opisz problem.')).toBeVisible();
   await expect(
-    form.getByRole('textbox', { name: 'Temat usterki' }),
+    form.getByRole('textbox', { name: 'Rodzaj usterki' }),
   ).toHaveAttribute('aria-invalid', 'true');
   await expect(
     page.getByRole('heading', { name: 'Szczegóły zgłoszenia' }),
