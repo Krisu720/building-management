@@ -6,9 +6,17 @@ Aplikacja webowa wspomagająca zgłaszanie usterek oraz zarządzanie przeglądam
  
 Projekt realizowany w ramach przedmiotu **Projekt Systemu Aplikacji Multimedialnej 2026/2027**. 
 
- # Technologie 
+# Aktualne funkcjonalności aplikacji
+- Rejestracja, logowanie i zmiana hasła.
+- Widoki panelu dostosowane do ról administratora, mieszkańca i technika.
+- Zgłaszanie usterek w mieszkaniach i częściach wspólnych budynków.
+- Przeglądanie zgłoszeń i śledzenie ich statusów.
+- Przeglądanie i dodawanie budynków wraz z mieszkaniami.
+- Przeglądanie listy mieszkańców i przypisywanie im mieszkań.
+- Planowanie przeglądów technicznych i przypisywanie techników.
+- Wyświetlanie przeglądów dotyczących mieszkańca oraz przeglądów przypisanych technikowi.
 
-Frontend: Next.js, React, TypeScript, Tailwind CSS, shadcn/ui.  
+# Technologie 
 
 Formularze: React Hook Form, Zod v4. 
 
