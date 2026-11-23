@@ -10,6 +10,12 @@ export function getInitials(name: string) {
   );
 }
 
+export function getPanelRole(role?: string | null) {
+  const roles = (role ?? '').split(',').map((value) => value.trim());
+  if (roles.includes('admin')) return 'admin';
+  return roles.includes('technician') ? 'technician' : 'resident';
+}
+
 export function isAdmin(role?: string | null) {
-  return (role ?? '').split(',').some((value) => value.trim() === 'admin');
+  return getPanelRole(role) === 'admin';
 }

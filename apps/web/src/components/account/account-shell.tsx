@@ -11,6 +11,7 @@ import {
 } from 'react';
 import {
   Building2,
+  CalendarPlus,
   ChevronRight,
   ClipboardList,
   House,
@@ -23,7 +24,7 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
-import { getInitials, isAdmin } from '@/lib/user-display';
+import { getInitials, getPanelRole } from '@/lib/user-display';
 import { authClient } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { QueryProvider } from './query-provider';
@@ -43,12 +44,44 @@ export function useAccount() {
   return context;
 }
 
+const panelTitles = {
+  admin: 'Panel administracyjny',
+  technician: 'Panel technika',
+  resident: 'Panel użytkownika',
+};
+
 const accountNavigation = [
   { href: '/', label: 'Panel główny', icon: LayoutDashboard },
-  { href: '/buildings', label: 'Budynki', icon: Building2 },
-  { href: '/residents', label: 'Mieszkańcy', icon: UsersRound },
-  { href: '/requests', label: 'Zgłoszenia', icon: ClipboardList },
-  { href: '/my-requests', label: 'Moje zgłoszenia', icon: ClipboardList },
+  {
+    href: '/buildings',
+    label: 'Budynki',
+    icon: Building2,
+    audiences: ['admin'],
+  },
+  {
+    href: '/residents',
+    label: 'Mieszkańcy',
+    icon: UsersRound,
+    audiences: ['admin'],
+  },
+  {
+    href: '/requests',
+    label: 'Zgłoszenia',
+    icon: ClipboardList,
+    audiences: ['admin', 'resident'],
+  },
+  {
+    href: '/my-requests',
+    label: 'Moje zgłoszenia',
+    icon: ClipboardList,
+    audiences: ['resident'],
+  },
+  {
+    href: '/inspections/new',
+    label: 'Zgłoś przegląd techniczny',
+    icon: CalendarPlus,
+    audiences: ['admin'],
+  },
   { href: '/inspections', label: 'Przeglądy techniczne', icon: Wrench },
 ];
 
@@ -119,15 +152,11 @@ export function AccountShell({ children }: { children: ReactNode }) {
     );
   }
 
-  const administrator = isAdmin(session.user.role);
-  const panelTitle = administrator
-    ? 'Panel administracyjny'
-    : 'Panel użytkownika';
+  const panelRole = getPanelRole(session.user.role);
+  const panelTitle = panelTitles[panelRole];
   const initials = getInitials(session.user.name);
-  const navigation = accountNavigation.filter(({ href }) =>
-    administrator
-      ? href !== '/my-requests'
-      : !['/buildings', '/residents'].includes(href),
+  const navigation = accountNavigation.filter(
+    ({ audiences }) => !audiences || audiences.includes(panelRole),
   );
 
   return (
@@ -194,7 +223,7 @@ export function AccountShell({ children }: { children: ReactNode }) {
                 >
                   <Icon className="shrink-0" size={18} strokeWidth={1.7} />
                   <span>
-                    {href === '/requests' && !administrator
+                    {href === '/requests' && panelRole === 'resident'
                       ? 'Zgłoś usterkę'
                       : label}
                   </span>

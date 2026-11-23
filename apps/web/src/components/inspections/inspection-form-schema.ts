@@ -1,13 +1,56 @@
-import type { Apartment, Building } from '@/lib/api/models';
+import type {
+  Apartment,
+  Building,
+  InspectionListItem,
+  InspectionType,
+} from '@/lib/api/models';
 import { z } from 'zod/v4';
 
-export const inspectionTypeSuggestions = [
-  'Instalacja gazowa',
-  'Instalacja elektryczna',
-  'Przegląd wentylacji',
-  'Roczny przegląd budynku',
-  'Przegląd instalacji wodnej',
-] as const;
+export const inspectionTypeLabels = {
+  gas: 'Instalacja gazowa',
+  electrical: 'Instalacja elektryczna',
+  chimney: 'Przegląd kominiarski',
+  building_annual: 'Roczny przegląd budynku',
+  building_five_year: 'Pięcioletni przegląd budynku',
+  other: 'Inny przegląd',
+} as const satisfies Record<InspectionType, string>;
+
+export const inspectionTypePresets = [
+  { type: 'gas', label: inspectionTypeLabels.gas },
+  { type: 'electrical', label: inspectionTypeLabels.electrical },
+  { type: 'chimney', label: inspectionTypeLabels.chimney },
+  { type: 'building_annual', label: inspectionTypeLabels.building_annual },
+  { type: 'building_five_year', label: inspectionTypeLabels.building_five_year },
+] as const satisfies readonly {
+  type: Exclude<InspectionType, 'other'>;
+  label: string;
+}[];
+
+export const inspectionTypeSuggestions: readonly string[] =
+  inspectionTypePresets.map((preset) => preset.label);
+
+export function resolveInspectionTypePayload(inputLabel: string): {
+  type: InspectionType;
+  typeLabel: string | null;
+} {
+  const trimmed = inputLabel.trim();
+  const matched = inspectionTypePresets.find(
+    (preset) => preset.label.toLowerCase() === trimmed.toLowerCase(),
+  );
+  if (matched) {
+    return { type: matched.type, typeLabel: null };
+  }
+  return { type: 'other', typeLabel: trimmed };
+}
+
+export function getInspectionTypeLabel(
+  inspection: Pick<InspectionListItem, 'type' | 'typeLabel'>,
+): string {
+  if (inspection.type === 'other') {
+    return inspection.typeLabel?.trim() || inspectionTypeLabels.other;
+  }
+  return inspectionTypeLabels[inspection.type];
+}
 
 export const inspectionTypeLabelLimit = 120;
 
@@ -104,8 +147,9 @@ export function createInspectionFormSchema(
         }
       }
     })
-    .transform(({ scheduledDate, scheduledTime, ...values }) => ({
+    .transform(({ scheduledDate, scheduledTime, typeLabel, ...values }) => ({
       ...values,
+      ...resolveInspectionTypePayload(typeLabel),
       scheduledAt: new Date(scheduledDate + 'T' + scheduledTime).toISOString(),
     }));
 }

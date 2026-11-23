@@ -1,11 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, ClipboardList } from 'lucide-react';
+import { ArrowRight, ClipboardList, Search } from 'lucide-react';
 import { useAccount } from '@/components/account/account-shell';
 import { isAdmin } from '@/lib/user-display';
+import {
+  formatIssueNumber,
+  matchesIssueNumberQuery,
+} from '@/lib/issue-number';
 import { MaintenanceRequestForm } from './maintenance-request-form';
 import { useIssuesFindAll, useIssuesFindMine } from '@/lib/api/generated';
 import { getApiErrorMessage } from '@/lib/api/fetch';
@@ -109,8 +113,8 @@ function RequestItem({
           )}
           <div className="min-w-0">
             <dt className="text-[#8792a2]">Numer zgłoszenia</dt>
-            <dd className="mt-1 break-all font-mono text-[12px] text-[#66758a]">
-              {issue.id}
+            <dd className="mt-1 font-mono text-[13px] font-medium text-[#263448] tabular-nums">
+              {formatIssueNumber(issue.number)}
             </dd>
           </div>
         </dl>
@@ -120,7 +124,8 @@ function RequestItem({
 }
 
 function RequestList({ personal = false }: { personal?: boolean }) {
-  const allIssues = useIssuesFindAll({
+  const [numberFilter, setNumberFilter] = useState('');
+  const allIssues = useIssuesFindAll(undefined, {
     query: { enabled: !personal, staleTime: 0 },
   });
   const myIssues = useIssuesFindMine({
@@ -128,6 +133,11 @@ function RequestList({ personal = false }: { personal?: boolean }) {
   });
   const query = personal ? myIssues : allIssues;
   const issues = query.data ?? [];
+  const filteredIssues = personal
+    ? issues
+    : issues.filter((issue) =>
+        matchesIssueNumberQuery(issue.number, numberFilter),
+      );
 
   return (
     <div className="mx-auto max-w-[1360px] px-7 pb-5 pt-7 max-[1100px]:px-8 max-[800px]:px-5 max-[560px]:px-4">
@@ -146,19 +156,38 @@ function RequestList({ personal = false }: { personal?: boolean }) {
         className="overflow-hidden rounded-xl border border-[#e5eaf1] bg-white"
         aria-labelledby="requests-list-heading"
       >
-        <header className="flex items-center gap-2.5 border-b border-[#edf0f5] px-6 py-4 max-[560px]:px-4">
-          <ClipboardList
-            size={20}
-            strokeWidth={1.7}
-            className="shrink-0 text-[#0866f5]"
-            aria-hidden="true"
-          />
-          <h2
-            id="requests-list-heading"
-            className="text-[17px] font-semibold tracking-[-0.3px] text-[#263448]"
-          >
-            Lista zgłoszeń
-          </h2>
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf0f5] px-6 py-4 max-[560px]:px-4">
+          <div className="flex items-center gap-2.5">
+            <ClipboardList
+              size={20}
+              strokeWidth={1.7}
+              className="shrink-0 text-[#0866f5]"
+              aria-hidden="true"
+            />
+            <h2
+              id="requests-list-heading"
+              className="text-[17px] font-semibold tracking-[-0.3px] text-[#263448]"
+            >
+              Lista zgłoszeń
+            </h2>
+          </div>
+          {!personal && (
+            <div className="relative w-full max-w-[240px] max-[560px]:max-w-none">
+              <Search
+                size={15}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8792a2]"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                value={numberFilter}
+                onChange={(event) => setNumberFilter(event.target.value)}
+                aria-label="Szukaj po numerze zgłoszenia"
+                placeholder="Szukaj nr, np. #1001"
+                className="h-9 w-full rounded-md border border-[#dfe5ed] bg-white pl-8 pr-3 text-[13px] text-[#344054] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-[#9aa5b4] focus:border-[#70a8fa] focus:shadow-[0_0_0_3px_#0866f510]"
+              />
+            </div>
+          )}
         </header>
         {query.isPending ? (
           <p
@@ -181,15 +210,28 @@ function RequestList({ personal = false }: { personal?: boolean }) {
               {query.isFetching ? 'Ładowanie…' : 'Spróbuj ponownie'}
             </button>
           </div>
-        ) : issues.length ? (
+        ) : filteredIssues.length ? (
           <ul
             aria-label={personal ? 'Moje zgłoszenia' : 'Zgłoszenia mieszkańców'}
             className="divide-y divide-[#edf0f5]"
           >
-            {issues.map((issue) => (
+            {filteredIssues.map((issue) => (
               <RequestItem key={issue.id} issue={issue} personal={personal} />
             ))}
           </ul>
+        ) : issues.length ? (
+          <div className="px-6 py-12 text-center">
+            <p className="text-[14px] text-[#526077]">
+              Brak zgłoszeń o numerze pasującym do „{numberFilter.trim()}”.
+            </p>
+            <button
+              type="button"
+              onClick={() => setNumberFilter('')}
+              className="mt-4 rounded-md border border-[#dfe5ed] px-4 py-2 text-[14px] text-[#526077] transition-colors duration-150 hover:bg-[#f6f8fb] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6ea8ff]"
+            >
+              Wyczyść filtr
+            </button>
+          </div>
         ) : (
           <div className="flex min-h-[330px] flex-col items-center justify-center px-6 py-12 text-center">
             <span className="grid size-14 place-items-center rounded-xl border border-[#e8edf3] text-[#8794a6]">

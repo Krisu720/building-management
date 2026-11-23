@@ -1,0 +1,1 @@
+ALTER TABLE "inspections" ADD COLUMN "type_label" text;

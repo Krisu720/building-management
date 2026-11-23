@@ -1,6 +1,7 @@
 import {
   BuildingIdSchema,
   BuildingSchema,
+  BuildingWithApartmentsSchema,
   CreateBuildingSchema,
   ErrorResponseSchema,
   UpdateBuildingSchema,
@@ -19,7 +20,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { UserHasPermission } from '@thallesp/nestjs-better-auth';
+import { Session, UserHasPermission, type UserSession } from '@thallesp/nestjs-better-auth';
 import { BuildingsService } from './buildings.service.js';
 
 const idParam = { schema: BuildingIdSchema };
@@ -44,6 +45,13 @@ export class BuildingsController {
     return this.buildingsService.findAll();
   }
 
+  @Get('with-apartments')
+  @UserHasPermission({ permission: { building: ['read'], apartment: ['read'] } })
+  @ApiOkResponse({ standardSchema: BuildingWithApartmentsSchema, isArray: true })
+  findAllWithApartments() {
+    return this.buildingsService.findAllWithApartments();
+  }
+
   @Get(':id')
   @can('read')
   @ApiOkResponse({ standardSchema: BuildingSchema })
@@ -54,11 +62,14 @@ export class BuildingsController {
   }
 
   @Post()
-  @can('create')
-  @ApiCreatedResponse({ standardSchema: BuildingSchema })
+  @UserHasPermission({ permission: { building: ['create'], apartment: ['create'] } })
+  @ApiCreatedResponse({ standardSchema: BuildingWithApartmentsSchema })
   @ApiBadRequestResponse(badRequest)
-  create(@Body({ schema: CreateBuildingSchema }) body: CreateBuilding) {
-    return this.buildingsService.create(body);
+  create(
+    @Body({ schema: CreateBuildingSchema }) body: CreateBuilding,
+    @Session() session: UserSession,
+  ) {
+    return this.buildingsService.create(body, session.user.id);
   }
 
   @Patch(':id')

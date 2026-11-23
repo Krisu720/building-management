@@ -24,6 +24,7 @@ export const inspections = pgTable(
   {
     id: uuid().primaryKey().defaultRandom(),
     type: inspectionType().notNull(),
+    typeLabel: text(),
     buildingId: uuid()
       .notNull()
       .references(() => buildings.id, { onDelete: 'cascade' }),

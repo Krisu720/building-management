@@ -14,7 +14,7 @@
     "test": "turbo run test",
     "env:generate": "turbo run env:generate",
     "openapi:generate": "turbo run openapi:generate",
-    "db:start": "varlock run -- docker compose up -d --wait",
+    "db:start": "varlock run -- docker compose -f docker-compose.dev.yml up -d --wait",
     "db:stop": "varlock run -- docker compose down",
     "db:generate": "pnpm --filter @building-management/db db:generate",
     "db:migrate": "pnpm --filter @building-management/db db:migrate",
