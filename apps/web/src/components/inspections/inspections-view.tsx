@@ -42,7 +42,7 @@ import {
   useUsersFindAll,
 } from '@/lib/api/generated';
 import type { InspectionListItem } from '@/lib/api/models';
-import { isAdmin } from '@/lib/user-display';
+import { getPanelRole, isAdmin } from '@/lib/user-display';
 import {
   createInspectionFormSchema,
   getInspectionTechnicians,
@@ -117,20 +117,34 @@ type InspectionConfirmation = {
   count: number;
 };
 
+const inspectionListCopy = {
+  admin: {
+    description: 'Lista przeglądów części wspólnych i mieszkań.',
+    heading: 'Zaplanowane przeglądy',
+    empty: 'Brak przeglądów do wyświetlenia.',
+  },
+  resident: {
+    description: 'Terminy przeglądów dotyczących Twojego budynku i mieszkania.',
+    heading: 'Moje przeglądy',
+    empty: 'Brak przeglądów do wyświetlenia.',
+  },
+  technician: {
+    description: 'Terminy i lokalizacje przeglądów przypisanych do Ciebie.',
+    heading: 'Przypisane przeglądy',
+    empty: 'Nie masz przypisanych przeglądów.',
+  },
+};
+
 export function InspectionsView() {
   const { user } = useAccount();
-  const administrator = isAdmin(user.role);
+  const role = getPanelRole(user.role);
 
   return (
     <InspectionsPage
       title="Przeglądy techniczne"
-      description={
-        administrator
-          ? 'Lista przeglądów części wspólnych i mieszkań.'
-          : 'Terminy przeglądów dotyczących Twojego budynku i mieszkania.'
-      }
+      description={inspectionListCopy[role].description}
     >
-      <InspectionsListSection personal={!administrator} />
+      <InspectionsListSection role={role} userId={user.id} />
     </InspectionsPage>
   );
 }
@@ -178,7 +192,16 @@ function InspectionsPage({
   );
 }
 
-function InspectionsListSection({ personal }: { personal: boolean }) {
+function InspectionsListSection({
+  role,
+  userId,
+}: {
+  role: ReturnType<typeof getPanelRole>;
+  userId: string;
+}) {
+  const personal = role !== 'admin';
+  const technician = role === 'technician';
+  const { heading, empty } = inspectionListCopy[role];
   const allQuery = useInspectionsFindAll({
     query: { enabled: !personal, staleTime: 0 },
   });
@@ -186,7 +209,9 @@ function InspectionsListSection({ personal }: { personal: boolean }) {
     query: { enabled: personal, staleTime: 0 },
   });
   const query = personal ? mineQuery : allQuery;
-  const inspections = query.data ?? [];
+  const inspections = (query.data ?? []).filter(
+    (inspection) => !technician || inspection.technicianId === userId,
+  );
 
   return (
     <section className={sectionClassName}>
@@ -197,7 +222,7 @@ function InspectionsListSection({ personal }: { personal: boolean }) {
           className="text-[#0866f5]"
           aria-hidden="true"
         />
-        {personal ? 'Moje przeglądy' : 'Zaplanowane przeglądy'}
+        {heading}
       </h2>
       {query.isPending ? (
         <p
@@ -221,10 +246,7 @@ function InspectionsListSection({ personal }: { personal: boolean }) {
           </button>
         </div>
       ) : inspections.length ? (
-        <ul
-          aria-label={personal ? 'Moje przeglądy' : 'Zaplanowane przeglądy'}
-          className="divide-y divide-[#edf0f5]"
-        >
+        <ul aria-label={heading} className="divide-y divide-[#edf0f5]">
           {inspections.map((inspection) => {
             const status = inspectionStatuses[inspection.status];
             return (
@@ -249,7 +271,12 @@ function InspectionsListSection({ personal }: { personal: boolean }) {
                       {status.label}
                     </span>
                   </div>
-                  <dl className="mt-3 grid grid-cols-3 gap-x-6 gap-y-3 text-[13px] max-[700px]:grid-cols-1">
+                  <dl
+                    className={
+                      'mt-3 grid gap-x-6 gap-y-3 text-[13px] max-[700px]:grid-cols-1 ' +
+                      (technician ? 'grid-cols-2' : 'grid-cols-3')
+                    }
+                  >
                     <div className="min-w-0">
                       <dt className="text-[#8792a2]">Lokalizacja</dt>
                       <dd className="mt-1 wrap-break-word leading-relaxed text-[#526077]">
@@ -272,24 +299,34 @@ function InspectionsListSection({ personal }: { personal: boolean }) {
                         </time>
                       </dd>
                     </div>
-                    <div className="min-w-0">
-                      <dt className="text-[#8792a2]">Technik</dt>
-                      <dd className="mt-1 wrap-break-word text-[#526077]">
-                        {inspection.technician
-                          ? inspection.technician.name
-                          : 'Bez przypisania'}
-                      </dd>
-                    </div>
+                    {!technician && (
+                      <div className="min-w-0">
+                        <dt className="text-[#8792a2]">Technik</dt>
+                        <dd className="mt-1 wrap-break-word text-[#526077]">
+                          {inspection.technician
+                            ? inspection.technician.name
+                            : 'Bez przypisania'}
+                        </dd>
+                      </div>
+                    )}
                   </dl>
+                  {technician && inspection.result?.trim() && (
+                    <div className="mt-4 border-t border-[#edf0f5] pt-3 text-[13px]">
+                      <h4 className="font-medium text-[#263448]">
+                        Wynik przeglądu
+                      </h4>
+                      <p className="mt-1 whitespace-pre-wrap wrap-break-word text-[#526077]">
+                        {inspection.result}
+                      </p>
+                    </div>
+                  )}
                 </article>
               </li>
             );
           })}
         </ul>
       ) : (
-        <p className="px-6 py-10 text-center text-sm text-[#526077]">
-          Brak przeglądów do wyświetlenia.
-        </p>
+        <p className="px-6 py-10 text-center text-sm text-[#526077]">{empty}</p>
       )}
     </section>
   );
