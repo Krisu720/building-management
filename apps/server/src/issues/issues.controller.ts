@@ -3,16 +3,19 @@ import {
   ErrorResponseSchema,
   IssueListItemSchema,
   IssueSchema,
+  ListIssuesQuerySchema,
   ROLES,
   type CreateIssue,
+  type ListIssuesQuery,
 } from '@building-management/contracts';
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiCookieAuth,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiOkResponse,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -29,9 +32,16 @@ export class IssuesController {
 
   @Get()
   @Roles([ROLES.ADMIN])
+  @ApiQuery({
+    name: 'number',
+    required: false,
+    description: 'Filtr po numerze zgłoszenia (np. 1001 lub #1001)',
+    schema: { type: 'string', pattern: '^#?\\d+$' },
+  })
   @ApiOkResponse({ standardSchema: IssueListItemSchema, isArray: true })
-  findAll() {
-    return this.issuesService.findAll();
+  @ApiBadRequestResponse({ description: 'Niepoprawne dane wejściowe', standardSchema: ErrorResponseSchema })
+  findAll(@Query({ schema: ListIssuesQuerySchema }) query: ListIssuesQuery) {
+    return this.issuesService.findAll(query);
   }
 
   @Get('mine')

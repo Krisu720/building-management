@@ -9,6 +9,11 @@ import type { IssueStatus } from './issueStatus';
 export interface Issue {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   id: string;
+  /**
+     * @minimum 1
+     * @maximum 2147483647
+     */
+  number: number;
   title: string;
   description: string;
   status: IssueStatus;

@@ -1,4 +1,4 @@
-import { index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, integer, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { apartments } from './apartments.js';
 import { user } from './auth.js';
 import { buildings } from './buildings.js';
@@ -14,6 +14,7 @@ export const issues = pgTable(
   'issues',
   {
     id: uuid().primaryKey().defaultRandom(),
+    number: integer().generatedAlwaysAsIdentity({ startWith: 1001 }).notNull().unique(),
     title: text().notNull(),
     description: text().notNull(),
     status: issueStatus().notNull().default('new'),

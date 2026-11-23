@@ -33,6 +33,7 @@ import {
 } from '@/lib/api/generated';
 import type { Apartment, Issue } from '@/lib/api/models';
 import { getApiErrorMessage } from '@/lib/api/fetch';
+import { formatIssueNumber } from '@/lib/issue-number';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   createIssueFormSchema,
@@ -733,8 +734,8 @@ export function MaintenanceRequestForm() {
                 />
                 <div>
                   <p>Zgłoszenie zostało zapisane. Numer zgłoszenia:</p>
-                  <p className="mt-1 break-all font-mono text-[12px]">
-                    {confirmation.issue.id}
+                  <p className="mt-1 font-mono text-[15px] font-semibold tracking-tight text-[#1c2738] tabular-nums">
+                    {formatIssueNumber(confirmation.issue.number)}
                   </p>
                 </div>
               </div>

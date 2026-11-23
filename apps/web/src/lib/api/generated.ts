@@ -37,6 +37,7 @@ import type {
   InspectionListItem,
   Issue,
   IssueListItem,
+  IssuesFindAllParams,
   ResidentListItem,
   UserSummary,
   UsersFindAllParams
@@ -440,17 +441,24 @@ export function useApartmentsFindAll<TData = Awaited<ReturnType<typeof apartment
 
 
 
-export const getIssuesFindAllUrl = () => {
+export const getIssuesFindAllUrl = (params?: IssuesFindAllParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/issues`
+  return stringifiedParams.length > 0 ? `/api/issues?${stringifiedParams}` : `/api/issues`
 }
 
-export const issuesFindAll = async ( options?: Parameters<typeof apiFetch>[1]): Promise<IssueListItem[]> => {
+export const issuesFindAll = async (params?: IssuesFindAllParams, options?: Parameters<typeof apiFetch>[1]): Promise<IssueListItem[]> => {
 
-  return apiFetch<IssueListItem[]>(getIssuesFindAllUrl(),
+  return apiFetch<IssueListItem[]>(getIssuesFindAllUrl(params),
   {
     ...options,
     method: 'GET'
@@ -463,23 +471,23 @@ export const issuesFindAll = async ( options?: Parameters<typeof apiFetch>[1]): 
 
 
 
-export const getIssuesFindAllQueryKey = () => {
+export const getIssuesFindAllQueryKey = (params?: IssuesFindAllParams,) => {
     return [
-    `/api/issues`
+    `/api/issues`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getIssuesFindAllQueryOptions = <TData = Awaited<ReturnType<typeof issuesFindAll>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getIssuesFindAllQueryOptions = <TData = Awaited<ReturnType<typeof issuesFindAll>>, TError = ErrorType<ErrorResponse | void>>(params?: IssuesFindAllParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getIssuesFindAllQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getIssuesFindAllQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof issuesFindAll>>> = ({ signal }) => issuesFindAll({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof issuesFindAll>>> = ({ signal }) => issuesFindAll(params, { signal, ...requestOptions });
 
 
 
@@ -489,11 +497,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type IssuesFindAllQueryResult = NonNullable<Awaited<ReturnType<typeof issuesFindAll>>>
-export type IssuesFindAllQueryError = ErrorType<void>
+export type IssuesFindAllQueryError = ErrorType<ErrorResponse | void>
 
 
-export function useIssuesFindAll<TData = Awaited<ReturnType<typeof issuesFindAll>>, TError = ErrorType<void>>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData>> & Pick<
+export function useIssuesFindAll<TData = Awaited<ReturnType<typeof issuesFindAll>>, TError = ErrorType<ErrorResponse | void>>(
+ params: undefined |  IssuesFindAllParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof issuesFindAll>>,
           TError,
@@ -502,8 +510,8 @@ export function useIssuesFindAll<TData = Awaited<ReturnType<typeof issuesFindAll
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useIssuesFindAll<TData = Awaited<ReturnType<typeof issuesFindAll>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData>> & Pick<
+export function useIssuesFindAll<TData = Awaited<ReturnType<typeof issuesFindAll>>, TError = ErrorType<ErrorResponse | void>>(
+ params?: IssuesFindAllParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof issuesFindAll>>,
           TError,
@@ -512,16 +520,16 @@ export function useIssuesFindAll<TData = Awaited<ReturnType<typeof issuesFindAll
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useIssuesFindAll<TData = Awaited<ReturnType<typeof issuesFindAll>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export function useIssuesFindAll<TData = Awaited<ReturnType<typeof issuesFindAll>>, TError = ErrorType<ErrorResponse | void>>(
+ params?: IssuesFindAllParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useIssuesFindAll<TData = Awaited<ReturnType<typeof issuesFindAll>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export function useIssuesFindAll<TData = Awaited<ReturnType<typeof issuesFindAll>>, TError = ErrorType<ErrorResponse | void>>(
+ params?: IssuesFindAllParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof issuesFindAll>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getIssuesFindAllQueryOptions(options)
+  const queryOptions = getIssuesFindAllQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

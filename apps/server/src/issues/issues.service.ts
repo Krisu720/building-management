@@ -1,8 +1,8 @@
 import { apartments, buildings, issueHistory, issues, user, type Database } from '@building-management/db';
-import type { CreateIssue } from '@building-management/contracts';
+import type { CreateIssue, ListIssuesQuery } from '@building-management/contracts';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectDrizzle } from '@nestjs/drizzle';
-import { desc, eq, getTableColumns } from 'drizzle-orm';
+import { and, desc, eq, getTableColumns, type SQL } from 'drizzle-orm';
 
 @Injectable()
 export class IssuesService {
@@ -30,15 +30,19 @@ export class IssuesService {
     });
   }
 
-  findAll() {
-    return this.list();
+  findAll(query: ListIssuesQuery = {}) {
+    return this.list({ number: query.number });
   }
 
   findByReporter(reporterId: string) {
-    return this.list(reporterId);
+    return this.list({ reporterId });
   }
 
-  private async list(reporterId?: string) {
+  private async list(filters: { reporterId?: string; number?: number } = {}) {
+    const conditions: SQL[] = [];
+    if (filters.reporterId) conditions.push(eq(issues.reporterId, filters.reporterId));
+    if (filters.number !== undefined) conditions.push(eq(issues.number, filters.number));
+
     const rows = await this.db
       .select({
         ...getTableColumns(issues),
@@ -50,7 +54,7 @@ export class IssuesService {
       .innerJoin(buildings, eq(buildings.id, issues.buildingId))
       .leftJoin(apartments, eq(apartments.id, issues.apartmentId))
       .leftJoin(user, eq(user.id, issues.reporterId))
-      .where(reporterId ? eq(issues.reporterId, reporterId) : undefined)
+      .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(issues.createdAt));
 
     return rows.map(({ apartmentRef, reporterRef, ...issue }) => ({

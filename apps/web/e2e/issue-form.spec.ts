@@ -64,14 +64,14 @@ async function openForm(page: Page, baseURL: string) {
   return page.locator('form');
 }
 
-async function submittedIssueId(page: Page) {
+async function submittedIssueNumber(page: Page) {
   const status = page.getByRole('status');
   await expect(status).toContainText(
     'Zgłoszenie zostało zapisane. Numer zgłoszenia:',
   );
-  const id = (await status.locator('p').nth(1).textContent())?.trim();
-  expect(id).toMatch(/^[0-9a-f-]{36}$/);
-  return id!;
+  const label = (await status.locator('p').nth(1).textContent())?.trim();
+  expect(label).toMatch(/^#\d+$/);
+  return { label: label!, number: Number(label!.slice(1)) };
 }
 
 test('mieszkaniec wysyła zgłoszenie usterki w mieszkaniu', async ({
@@ -112,7 +112,7 @@ test('mieszkaniec wysyła zgłoszenie usterki w mieszkaniu', async ({
   await expect(
     page.getByRole('heading', { name: 'Zgłoszenie wysłane' }),
   ).toBeVisible();
-  const issueId = await submittedIssueId(page);
+  const issue = await submittedIssueNumber(page);
   await expect(
     page.getByRole('heading', { name: 'Cieknący kran w kuchni' }),
   ).toBeVisible();
@@ -131,8 +131,8 @@ test('mieszkaniec wysyła zgłoszenie usterki w mieszkaniu', async ({
   }>(
     `select i.title, i.description, i.status, i.building_id, a.number as apartment_number
        from issues i left join apartments a on a.id = i.apartment_id
-      where i.id = $1`,
-    [issueId],
+      where i.number = $1`,
+    [issue.number],
   );
   expect(rows).toEqual([
     {
@@ -154,7 +154,7 @@ test('mieszkaniec wysyła zgłoszenie usterki w mieszkaniu', async ({
     .getByRole('article', { name: 'Cieknący kran w kuchni' });
   await expect(item).toContainText('Nowe');
   await expect(item).toContainText('Mieszkanie 12');
-  await expect(item).toContainText(issueId);
+  await expect(item).toContainText(issue.label);
 });
 
 test('mieszkaniec wysyła zgłoszenie usterki w części wspólnej', async ({
@@ -180,15 +180,15 @@ test('mieszkaniec wysyła zgłoszenie usterki w części wspólnej', async ({
   await form.getByRole('button', { name: 'Wyślij zgłoszenie' }).click();
 
   await expect(page.getByRole('heading', { name: 'Nie działa winda' })).toBeVisible();
-  const issueId = await submittedIssueId(page);
+  const issue = await submittedIssueNumber(page);
   const details = page.locator('dl').filter({ hasText: 'Dotyczy' });
   await expect(details).toContainText('Części wspólnej');
   await expect(details).not.toContainText('Numer mieszkania');
   await expect(page.getByText('Miejsce usterki: Klatka B, parter')).toBeVisible();
 
   const { rows } = await db.query<{ apartment_id: string | null; description: string }>(
-    'select apartment_id, description from issues where id = $1',
-    [issueId],
+    'select apartment_id, description from issues where number = $1',
+    [issue.number],
   );
   expect(rows).toEqual([
     {

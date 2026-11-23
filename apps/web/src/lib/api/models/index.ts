@@ -30,6 +30,7 @@ export * from './issueListItemApartment';
 export * from './issueListItemBuilding';
 export * from './issueListItemReporter';
 export * from './issueListItemStatus';
+export * from './issuesFindAllParams';
 export * from './issueStatus';
 export * from './residentListItem';
 export * from './usersFindAllParams';

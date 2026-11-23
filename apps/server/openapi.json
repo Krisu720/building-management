@@ -382,7 +382,18 @@
     "/api/issues": {
       "get": {
         "operationId": "Issues_findAll",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "number",
+            "required": false,
+            "in": "query",
+            "description": "Filtr po numerze zgłoszenia (np. 1001 lub #1001)",
+            "schema": {
+              "type": "string",
+              "pattern": "^#?\\d+$"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -393,6 +404,16 @@
                   "items": {
                     "$ref": "#/components/schemas/IssueListItem"
                   }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Niepoprawne dane wejściowe",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1029,6 +1050,14 @@
         ],
         "additionalProperties": false
       },
+      "ListIssuesQuery": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          }
+        }
+      },
       "IssueListItem": {
         "type": "object",
         "properties": {
@@ -1036,6 +1065,11 @@
             "type": "string",
             "format": "uuid",
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "number": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
           },
           "title": {
             "type": "string"
@@ -1146,6 +1180,7 @@
         },
         "required": [
           "id",
+          "number",
           "title",
           "description",
           "status",
@@ -1200,6 +1235,11 @@
             "format": "uuid",
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           },
+          "number": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
           "title": {
             "type": "string"
           },
@@ -1247,6 +1287,7 @@
         },
         "required": [
           "id",
+          "number",
           "title",
           "description",
           "status",
